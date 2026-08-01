@@ -9,11 +9,19 @@ const KEY_MAP = Object.freeze({
   KeyD: "right",
 });
 
-export function createKeyboardInput(target = window) {
+export function createKeyboardInput(target = window, { canQueueAttack = () => true } = {}) {
   const keys = Object.create(null);
   let lastAxis = "h";
+  let attackQueued = false;
 
   function onKeyDown(event) {
+    if (event.code === "Space") {
+      // Don't stack another attack while one is already the active action.
+      if (!event.repeat && canQueueAttack()) attackQueued = true;
+      event.preventDefault();
+      return;
+    }
+
     const action = KEY_MAP[event.code];
     if (!action) return;
     keys[action] = true;
@@ -30,6 +38,17 @@ export function createKeyboardInput(target = window) {
 
   function clear() {
     for (const action of Object.values(KEY_MAP)) keys[action] = false;
+    attackQueued = false;
+  }
+
+  function hasAttackRequest() {
+    return attackQueued;
+  }
+
+  function consumeAttack() {
+    if (!attackQueued) return false;
+    attackQueued = false;
+    return true;
   }
 
   function getDirection() {
@@ -53,5 +72,5 @@ export function createKeyboardInput(target = window) {
   target.addEventListener("keyup", onKeyUp);
   target.addEventListener("blur", clear);
 
-  return { getDirection, destroy };
+  return { getDirection, hasAttackRequest, consumeAttack, destroy };
 }

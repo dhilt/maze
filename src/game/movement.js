@@ -5,8 +5,15 @@ export function createMovement({ world, player, input, cellSize, cellTime }) {
   let facing = "down";
 
   function startMoveIfInput() {
-    let { dx, dy } = input.getDirection();
+    const { dx: intentDx, dy: intentDy } = input.getDirection();
 
+    // Turn to face the intended direction even if it is blocked — this lets the
+    // hero face a wall from rest without stepping into it.
+    if (intentDx !== 0) facing = intentDx > 0 ? "right" : "left";
+    else if (intentDy !== 0) facing = intentDy > 0 ? "down" : "up";
+
+    let dx = intentDx;
+    let dy = intentDy;
     if (player.col + dx < 0 || player.col + dx >= world.width) dx = 0;
     if (player.row + dy < 0 || player.row + dy >= world.height) dy = 0;
     if (dx !== 0 && hasWall(world, player.col, player.row, dx, 0)) dx = 0;
@@ -14,12 +21,11 @@ export function createMovement({ world, player, input, cellSize, cellTime }) {
     if (dx === 0 && dy === 0) return;
 
     move = { dx, dy, t: 0 };
-    if (dx !== 0) facing = dx > 0 ? "right" : "left";
-    else facing = dy > 0 ? "down" : "up";
   }
 
-  function update(dt) {
+  function update(dt, { stopAtBoundary = false } = {}) {
     if (!move) {
+      if (stopAtBoundary) return;
       startMoveIfInput();
       if (!move) return;
     }
@@ -30,6 +36,7 @@ export function createMovement({ world, player, input, cellSize, cellTime }) {
       player.row += move.dy;
       const leftover = move.t - cellTime;
       move = null;
+      if (stopAtBoundary) break;
       startMoveIfInput();
       if (move) move.t = leftover;
     }
@@ -47,6 +54,7 @@ export function createMovement({ world, player, input, cellSize, cellTime }) {
     update,
     getPixelPosition,
     get move() { return move; },
+    get isIdle() { return move === null; },
     get facing() { return facing; },
   };
 }

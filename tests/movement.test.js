@@ -42,3 +42,42 @@ test("movement respects a blocking wall", () => {
   assert.equal(movement.move, null);
   assert.deepEqual(player, { col: 2, row: 2 });
 });
+
+test("facing turns toward a blocked direction from idle without moving", () => {
+  const world = generateWorld({ width: 5, height: 5, seed: 1 });
+  world.at(2, 1).wallDown = true; // wall directly above the player
+  const player = { col: 2, row: 2 };
+  const input = { getDirection: () => ({ dx: 0, dy: -1 }) }; // pressing up into the wall
+  const movement = createMovement({
+    world,
+    player,
+    input,
+    cellSize: 64,
+    cellTime: 0.44,
+  });
+
+  movement.update(0.2);
+  assert.equal(movement.isIdle, true); // did not move
+  assert.deepEqual(player, { col: 2, row: 2 });
+  assert.equal(movement.facing, "up"); // but turned to face the wall
+});
+
+test("a queued action stops movement at the next cell boundary", () => {
+  const world = generateWorld({ width: 5, height: 5, seed: 1 });
+  const player = { col: 1, row: 2 };
+  const input = { getDirection: () => ({ dx: 1, dy: 0 }) };
+  const movement = createMovement({
+    world,
+    player,
+    input,
+    cellSize: 64,
+    cellTime: 0.44,
+  });
+
+  movement.update(0.2);
+  movement.update(0.5, { stopAtBoundary: true });
+
+  assert.deepEqual(player, { col: 2, row: 2 });
+  assert.equal(movement.move, null);
+  assert.equal(movement.isIdle, true);
+});

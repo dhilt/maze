@@ -1,9 +1,9 @@
 // Renderer module — all canvas drawing.
 // Draws a fixed viewport onto a larger world at a continuous camera offset,
 // plus debug helpers (cell numbers, static-viewport outline).
-// Gets its sprites from graphics.js; gets plain state + camera from the game loop.
+// Gets its sprites from the character renderer; gets plain state + camera from the game loop.
 
-import { buildSprites } from "./character/knight-sprites.js";
+import { buildAttackSprites, buildSprites } from "./character/knight-sprites.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
 import { drawWalls } from "./walls.js";
 import { TERRAIN, DEFAULT_TERRAIN } from "../world/terrain.js";
@@ -21,6 +21,7 @@ export function createRenderer(ctx, config) {
   } = config;
 
   const SPRITES = buildSprites();
+  const ATTACK_SPRITES = buildAttackSprites();
   const W = VC * CELL;
   const H = VR * CELL;
   const numFont = `${Math.round(CELL * 0.17)}px system-ui, sans-serif`;
@@ -111,7 +112,7 @@ export function createRenderer(ctx, config) {
 
   }
 
-  function drawPlayer({ player, move, facing }, cam) {
+  function drawPlayer({ player, move, attack, facing }, cam) {
     let wx = player.col * CELL;
     let wy = player.row * CELL;
     let frame = 0; // standing pose when idle
@@ -124,7 +125,12 @@ export function createRenderer(ctx, config) {
     const sx = wx - cam.px;
     const sy = wy - cam.py;
 
-    const img = SPRITES[facing][frame];
+    let img = SPRITES[facing][frame];
+    if (attack) {
+      const frames = ATTACK_SPRITES[facing];
+      const progress = Math.min(attack.t / attack.duration, 0.999999);
+      img = frames[Math.floor(progress * frames.length)];
+    }
     if (img.complete && img.naturalWidth) {
       ctx.drawImage(img, sx, sy, CELL, CELL);
     } else {

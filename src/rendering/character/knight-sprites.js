@@ -1,9 +1,8 @@
 // Knight sprite module: vector sprite generation only.
 //
-// The public contract intentionally stays small: buildSprites() returns four
-// directions with four walk frames each. Every direction is drawn as its own
-// top-down / lightly isometric view; the finished character is never rotated as
-// a flat icon.
+// Walk and attack frames share the same hand-drawn top-down / lightly
+// isometric poses. Every direction is drawn independently; the finished
+// character is never rotated as a flat icon.
 
 const DIRECTIONS = ["down", "up", "left", "right"];
 
@@ -16,6 +15,112 @@ const WALK = [
   { stride: 1, bob: 0, sway: 0.45, swordRock: 1.7, plume: 0.7 },
   { stride: 0.28, bob: -0.8, sway: -0.5, swordRock: 0.35, plume: -0.35 },
 ];
+
+// Each attack returns along its own safe path. Opposite facings use opposite
+// screen-space arcs: down/left-to-right pass on one side of the body, while
+// up/right-to-left pass on the 180-degree mirrored side.
+const ATTACK_IDLE = { ...WALK[0], attackFrame: 0, lunge: 0 };
+const ATTACK_LIFT = {
+  stride: -1, bob: -0.2, sway: -0.22, swordRock: -1.7,
+  plume: -0.45, attackFrame: 1, lunge: 0,
+};
+const ATTACK_RAISED = {
+  stride: -1, bob: -0.75, sway: 0.05, swordRock: -1.7,
+  plume: 0.1, attackFrame: 2, lunge: 0.35,
+};
+const ATTACK_STRIKE = {
+  stride: -1, bob: 0.15, sway: 0.18, swordRock: -1.7,
+  plume: 0.65, attackFrame: 3, lunge: 2.8,
+};
+const ATTACK = [
+  ATTACK_IDLE,
+  ATTACK_LIFT,
+  ATTACK_RAISED,
+  ATTACK_STRIKE,
+  { ...ATTACK_RAISED, attackFrame: 4 },
+  { ...ATTACK_LIFT, attackFrame: 5 },
+  { ...ATTACK_IDLE, attackFrame: 6 },
+];
+
+const ATTACK_SWORDS = Object.freeze({
+  down: [
+    { x: 21.6, y: 31.5, angle: -1.7 },
+    { x: 23, y: 29.5, angle: -22 },
+    { x: 26, y: 27, angle: -58 },
+    { x: 28, y: 30, angle: 180 },
+    { x: 26, y: 27, angle: -58 },
+    { x: 23, y: 29.5, angle: -22 },
+    { x: 21.6, y: 31.5, angle: -1.7 },
+  ],
+  up: [
+    { x: 42.4, y: 31, angle: 181.7 },
+    { x: 41, y: 34.5, angle: 158 },
+    { x: 38, y: 37, angle: 122 },
+    { x: 36, y: 34, angle: 0 },
+    { x: 38, y: 37, angle: 122 },
+    { x: 41, y: 34.5, angle: 158 },
+    { x: 42.4, y: 31, angle: 181.7 },
+  ],
+  right: [
+    { x: 34.1, y: 38.8, angle: -91.7 },
+    { x: 36, y: 41, angle: -105 },
+    { x: 38, y: 43, angle: -125 },
+    { x: 35, y: 42, angle: 90 },
+    { x: 38, y: 43, angle: -125 },
+    { x: 36, y: 41, angle: -105 },
+    { x: 34.1, y: 38.8, angle: -91.7 },
+  ],
+  left: [
+    { x: 29.9, y: 23.2, angle: 91.7 },
+    { x: 28, y: 19, angle: 80 },
+    { x: 26, y: 18, angle: 65 },
+    { x: 29, y: 19, angle: -90 },
+    { x: 26, y: 18, angle: 65 },
+    { x: 28, y: 19, angle: 80 },
+    { x: 29.9, y: 23.2, angle: 91.7 },
+  ],
+});
+
+const SWORD_SHOULDERS = Object.freeze({
+  down: { x: 22, y: 30.3 },
+  up: { x: 42.5, y: 31 },
+  right: { x: 34.5, y: 40.3 },
+  left: { x: 34.8, y: 25.9 },
+});
+
+const ATTACK_SHIELDS = Object.freeze({
+  down: [
+    { x: 46.3, y: 36, angle: -2.7, width: 0.78 },
+    { x: 44.5, y: 37.5, angle: -6, width: 0.88 },
+    { x: 42, y: 39.5, angle: -2, width: 1 },
+    { x: 40, y: 41.5, angle: 0, width: 1.08 },
+  ],
+  up: [
+    { x: 17.7, y: 35.3, angle: 182.7, width: 0.78 },
+    { x: 19.5, y: 33, angle: 0, width: 0.88 },
+    { x: 22, y: 29, angle: 0, width: 1 },
+    { x: 24, y: 25.5, angle: 0, width: 1.08 },
+  ],
+  right: [
+    { x: 33.5, y: 21.6, angle: -88.2, width: 0.72 },
+    { x: 37, y: 24, angle: 0, width: 0.86 },
+    { x: 41, y: 28, angle: 0, width: 1 },
+    { x: 44, y: 32, angle: 0, width: 1.08 },
+  ],
+  left: [
+    { x: 30.5, y: 44.2, angle: 88.2, width: 0.72 },
+    { x: 27, y: 41, angle: 0, width: 0.86 },
+    { x: 23, y: 36, angle: 0, width: 1 },
+    { x: 20, y: 32, angle: 0, width: 1.08 },
+  ],
+});
+
+const SHIELD_SHOULDERS = Object.freeze({
+  down: { x: 42, y: 30.3 },
+  up: { x: 21.5, y: 31 },
+  right: { x: 29.2, y: 25.9 },
+  left: { x: 29.5, y: 40.3 },
+});
 
 const r2 = (n) => Math.round(n * 100) / 100;
 
@@ -99,6 +204,39 @@ function sword(x, y, angle) {
   );
 }
 
+function attackPhase(pose) {
+  if (!Number.isInteger(pose.attackFrame)) return null;
+  return Math.min(pose.attackFrame, ATTACK.length - 1 - pose.attackFrame);
+}
+
+function swordPose(dir, pose) {
+  if (Number.isInteger(pose.attackFrame)) return ATTACK_SWORDS[dir][pose.attackFrame];
+  if (dir === "down") return { x: 21.6, y: 31.5, angle: pose.swordRock };
+  if (dir === "up") return { x: 42.4, y: 31, angle: 180 - pose.swordRock };
+  if (dir === "right") return { x: 34.1, y: 38.8, angle: -90 + pose.swordRock };
+  return { x: 29.9, y: 23.2, angle: 90 - pose.swordRock };
+}
+
+function swordArm(dir, pose, weapon) {
+  if (!Number.isInteger(pose.attackFrame) || pose.attackFrame === 0 || pose.attackFrame === 6) {
+    return "";
+  }
+
+  const shoulder = SWORD_SHOULDERS[dir];
+  const radians = weapon.angle * Math.PI / 180;
+  const handX = weapon.x - Math.sin(radians) * 6.3;
+  const handY = weapon.y + Math.cos(radians) * 6.3;
+  const middleX = (shoulder.x + handX) / 2;
+  const middleY = (shoulder.y + handY) / 2 - 0.8;
+
+  return (
+    `<path d='M${r2(shoulder.x)} ${r2(shoulder.y)} Q${r2(middleX)} ${r2(middleY)} ` +
+      `${r2(handX)} ${r2(handY)}' fill='none' stroke='#222a35' stroke-width='6' stroke-linecap='round'/>` +
+    `<path d='M${r2(shoulder.x)} ${r2(shoulder.y)} Q${r2(middleX)} ${r2(middleY)} ` +
+      `${r2(handX)} ${r2(handY)}' fill='none' stroke='url(#steel)' stroke-width='3.8' stroke-linecap='round'/>`
+  );
+}
+
 // A deliberately narrow shield: it is held parallel to the body rather than
 // presented flat toward the camera. Local +y points forward.
 function shield(x, y, angle, widthScale = 0.82) {
@@ -111,6 +249,44 @@ function shield(x, y, angle, widthScale = 0.82) {
       `<circle cx='0' cy='0' r='2.1' fill='#f0c957' stroke='#725514' stroke-width='0.8'/>` +
     `</g>`
   );
+}
+
+function shieldPose(dir, pose) {
+  const phase = attackPhase(pose);
+  if (phase !== null) return ATTACK_SHIELDS[dir][phase];
+  if (dir === "down") {
+    return { x: 46.3, y: 36, angle: -2.5 + pose.sway * 0.45, width: 0.78 };
+  }
+  if (dir === "up") {
+    return { x: 17.7, y: 35.3, angle: 182.5 - pose.sway * 0.45, width: 0.78 };
+  }
+  if (dir === "right") {
+    return { x: 33.5, y: 21.6, angle: -88 + pose.sway * 0.45, width: 0.72 };
+  }
+  return { x: 30.5, y: 44.2, angle: 88 - pose.sway * 0.45, width: 0.72 };
+}
+
+function shieldArm(dir, guard) {
+  const shoulder = SHIELD_SHOULDERS[dir];
+  const middleX = (shoulder.x + guard.x) / 2;
+  const middleY = (shoulder.y + guard.y) / 2 + (dir === "up" ? -0.8 : 0.8);
+
+  return (
+    `<path d='M${r2(shoulder.x)} ${r2(shoulder.y)} Q${r2(middleX)} ${r2(middleY)} ` +
+      `${r2(guard.x)} ${r2(guard.y)}' fill='none' stroke='#222a35' stroke-width='6' stroke-linecap='round'/>` +
+    `<path d='M${r2(shoulder.x)} ${r2(shoulder.y)} Q${r2(middleX)} ${r2(middleY)} ` +
+      `${r2(guard.x)} ${r2(guard.y)}' fill='none' stroke='url(#steel)' stroke-width='3.8' stroke-linecap='round'/>`
+  );
+}
+
+function raisedShield(dir, pose, guard) {
+  if (attackPhase(pose) === 0 || attackPhase(pose) === null) return "";
+  return shieldArm(dir, guard) + shield(guard.x, guard.y, guard.angle, guard.width);
+}
+
+function restingShield(pose, guard) {
+  if (attackPhase(pose) !== 0 && attackPhase(pose) !== null) return "";
+  return shield(guard.x, guard.y, guard.angle, guard.width);
 }
 
 function torsoDown() {
@@ -142,13 +318,17 @@ function helmetDown(plume) {
 
 function poseDown(pose) {
   const xShift = pose.sway;
+  const weapon = swordPose("down", pose);
+  const guard = shieldPose("down", pose);
   return (
     groundShadow() +
     legs("down", pose) +
-    `<g transform='translate(${r2(xShift)} ${r2(pose.bob)})'>` +
-      shield(46.3, 36, -2.5 + pose.sway * 0.45, 0.78) +
+    `<g transform='translate(${r2(xShift)} ${r2(pose.bob + (pose.lunge || 0))})'>` +
+      restingShield(pose, guard) +
       torsoDown() +
-      sword(21.6, 31.5, pose.swordRock) +
+      raisedShield("down", pose, guard) +
+      swordArm("down", pose, weapon) +
+      sword(weapon.x, weapon.y, weapon.angle) +
       helmetDown(pose.plume) +
     `</g>`
   );
@@ -182,13 +362,17 @@ function helmetUp(plume) {
 }
 
 function poseUp(pose) {
+  const weapon = swordPose("up", pose);
+  const guard = shieldPose("up", pose);
   return (
     groundShadow() +
     legs("up", pose) +
-    `<g transform='translate(${r2(-pose.sway)} ${r2(pose.bob)})'>` +
-      shield(17.7, 35.3, 182.5 - pose.sway * 0.45, 0.78) +
+    `<g transform='translate(${r2(-pose.sway)} ${r2(pose.bob - (pose.lunge || 0))})'>` +
+      restingShield(pose, guard) +
       torsoUp() +
-      sword(42.4, 31, 180 - pose.swordRock) +
+      raisedShield("up", pose, guard) +
+      swordArm("up", pose, weapon) +
+      sword(weapon.x, weapon.y, weapon.angle) +
       helmetUp(-pose.plume) +
     `</g>`
   );
@@ -223,13 +407,17 @@ function helmetRight(plume) {
 
 function poseRight(pose) {
   const yShift = pose.bob + pose.sway * 0.42;
+  const weapon = swordPose("right", pose);
+  const guard = shieldPose("right", pose);
   return (
     groundShadow() +
     legs("right", pose) +
-    `<g transform='translate(0 ${r2(yShift)})'>` +
-      shield(33.5, 21.6, -88 + pose.sway * 0.45, 0.72) +
+    `<g transform='translate(${r2(pose.lunge || 0)} ${r2(yShift)})'>` +
+      restingShield(pose, guard) +
       torsoRight() +
-      sword(34.1, 38.8, -90 + pose.swordRock) +
+      raisedShield("right", pose, guard) +
+      swordArm("right", pose, weapon) +
+      sword(weapon.x, weapon.y, weapon.angle) +
       helmetRight(pose.plume) +
     `</g>`
   );
@@ -264,13 +452,17 @@ function helmetLeft(plume) {
 
 function poseLeft(pose) {
   const yShift = pose.bob - pose.sway * 0.42;
+  const weapon = swordPose("left", pose);
+  const guard = shieldPose("left", pose);
   return (
     groundShadow() +
     legs("left", pose) +
-    `<g transform='translate(0 ${r2(yShift)})'>` +
-      shield(30.5, 44.2, 88 - pose.sway * 0.45, 0.72) +
+    `<g transform='translate(${r2(-(pose.lunge || 0))} ${r2(yShift)})'>` +
+      restingShield(pose, guard) +
       torsoLeft() +
-      sword(29.9, 23.2, 90 - pose.swordRock) +
+      raisedShield("left", pose, guard) +
+      swordArm("left", pose, weapon) +
+      sword(weapon.x, weapon.y, weapon.angle) +
       helmetLeft(pose.plume) +
     `</g>`
   );
@@ -283,9 +475,8 @@ const DRAW_POSE = {
   right: poseRight,
 };
 
-function spriteSVG(dir, frame) {
+function spriteSVG(dir, pose, frame) {
   const draw = DRAW_POSE[dir];
-  const pose = WALK[frame];
   if (!draw || !pose) throw new Error(`Unknown sprite pose: ${dir}/${frame}`);
 
   return (
@@ -307,7 +498,15 @@ function makeImage(svg) {
 export function buildSprites() {
   const sprites = {};
   for (const dir of DIRECTIONS) {
-    sprites[dir] = WALK.map((_, frame) => makeImage(spriteSVG(dir, frame)));
+    sprites[dir] = WALK.map((pose, frame) => makeImage(spriteSVG(dir, pose, frame)));
+  }
+  return sprites;
+}
+
+export function buildAttackSprites() {
+  const sprites = {};
+  for (const dir of DIRECTIONS) {
+    sprites[dir] = ATTACK.map((pose, frame) => makeImage(spriteSVG(dir, pose, frame)));
   }
   return sprites;
 }

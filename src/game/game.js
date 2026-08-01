@@ -3,6 +3,7 @@ import { createRenderer } from "../rendering/renderer.js";
 import { createStatsPanel } from "../ui/stats-panel.js";
 import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
+import { createAttack } from "./attack.js";
 import { createCamera } from "./camera.js";
 import { createKeyboardInput } from "./input.js";
 import { createMovement } from "./movement.js";
@@ -43,13 +44,19 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     col: Math.floor(config.worldCols / 2),
     row: Math.floor(config.worldRows / 2),
   };
-  const input = createKeyboardInput(window);
+  const input = createKeyboardInput(window, {
+    canQueueAttack: () => !attack.active,
+  });
   const movement = createMovement({
     world,
     player,
     input,
     cellSize: config.cellSize,
     cellTime: config.cellTime,
+  });
+  const attack = createAttack({
+    input,
+    duration: config.attackTime,
   });
   const camera = createCamera({
     player,
@@ -68,11 +75,20 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
 
-    movement.update(dt);
+    if (attack.active) {
+      attack.update(dt);
+    } else {
+      attack.tryStart(movement.isIdle);
+      if (!attack.active) {
+        movement.update(dt, { stopAtBoundary: input.hasAttackRequest() });
+        attack.tryStart(movement.isIdle);
+      }
+    }
     camera.update();
     renderer.render({
       player,
       move: movement.move,
+      attack: attack.state,
       facing: movement.facing,
       cam: camera.state,
       world,
@@ -98,6 +114,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     return {
       player,
       move: movement.move,
+      attack: attack.state,
       facing: movement.facing,
       cam: camera.state,
       world,

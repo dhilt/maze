@@ -2,7 +2,7 @@
 // panel beside the viewport. Give it the character; call update() whenever the
 // state changes (once now; per-hit later when combat exists).
 //
-// Rows are described declaratively, so adding a stat is one entry here.
+// Stat rows are declarative, so adding a stat is one entry here.
 
 const ROWS = [
   { type: "bar",   label: "Health",  value: "health", max: "healthMax" },

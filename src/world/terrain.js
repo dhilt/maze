@@ -15,5 +15,5 @@ export const TERRAIN = {
   mountain: { name: "Mountain",    color: "#7b7b83", walkable: false },
 };
 
-// Fallback for cells whose terrain id is missing/unknown.
+// Safe fallback for cells whose terrain id is missing/unknown.
 export const DEFAULT_TERRAIN = "stone";

@@ -3,7 +3,7 @@
 // createCharacter() returns sensible defaults; pass overrides for any field.
 // The object is intentionally flat data (no methods, JSON-serialisable) so it is
 // trivial to store, pass around, save/load, or hand to the stats panel. Extend by
-// adding a field here and a row in panel.js — nothing else needs to change.
+// adding a field here and a row in stats-panel.js — nothing else needs to change.
 
 export function createCharacter(overrides = {}) {
   return {

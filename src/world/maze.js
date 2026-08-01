@@ -20,7 +20,7 @@ function mulberry32(a) {
   };
 }
 
-// Place walls on cell edges with probability = density/100.
+// Place canonical walls on cell edges with probability = density/100.
 //   density 0   → no walls at all
 //   density 100 → every internal edge is a wall (each cell fully boxed in)
 // Only right/bottom edges of interior cells are set; the outer border is already

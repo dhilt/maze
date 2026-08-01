@@ -1,4 +1,4 @@
-// Procedural crypt floor.
+// Crypt floor theme.
 //
 // Large cold slabs form a staggered funerary pavement. Chamfered corners,
 // recessed borders, sparse engraved seals, hairline cracks and damp marks make

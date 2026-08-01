@@ -13,7 +13,7 @@ function createCell(x, y) {
 }
 
 // Explicit world generation — runs once at startup and returns the full world
-// structure in an extensible format. No landscape algorithm yet: every cell gets
+// structure in an extensible, serialisable format. No landscape algorithm yet: every cell gets
 // the default terrain. The single place to add generation later is createCell()
 // (per-cell) or a pass over `cells` below (region/noise based).
 export function generateWorld({ width, height, seed = 1 }) {

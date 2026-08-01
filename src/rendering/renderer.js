@@ -3,15 +3,10 @@
 // plus debug helpers (cell numbers, static-viewport outline).
 // Gets its sprites from graphics.js; gets plain state + camera from the game loop.
 
-import { buildSprites } from "./graphics.js";
-import { createStoneFloor } from "./floor.js";
-import { createCryptFloor } from "./floor-crypt.js";
-import { TERRAIN, DEFAULT_TERRAIN } from "./terrain.js";
-
-const FLOOR_FACTORIES = Object.freeze({
-  stone: createStoneFloor,
-  crypt: createCryptFloor,
-});
+import { buildSprites } from "./character/knight-sprites.js";
+import { createFloor, isFloorStyle } from "./floors/index.js";
+import { drawWalls } from "./walls.js";
+import { TERRAIN, DEFAULT_TERRAIN } from "../world/terrain.js";
 
 // createRenderer(ctx, config) → { render(state) }
 // config: { cellSize, viewCols, viewRows, worldCols, worldRows, phases, cellTime, margin, debug }
@@ -34,10 +29,10 @@ export function createRenderer(ctx, config) {
 
   function getFloor(world, requestedStyle) {
     const seed = Number.isFinite(world.seed) ? world.seed : 1;
-    const style = FLOOR_FACTORIES[requestedStyle] ? requestedStyle : "stone";
+    const style = isFloorStyle(requestedStyle) ? requestedStyle : "stone";
     const cacheKey = `${style}:${seed}`;
     if (!floorRenderer || floorCacheKey !== cacheKey) {
-      floorRenderer = FLOOR_FACTORIES[style]({
+      floorRenderer = createFloor(style, {
         worldWidth: WC * CELL,
         worldHeight: WR * CELL,
         seed,
@@ -104,40 +99,15 @@ export function createRenderer(ctx, config) {
       }
     }
 
-    // Walls pass: thin edge-walls drawn on top so neighbour fills never cover them.
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    for (let r = startRow; r <= startRow + VR; r++) {
-      for (let c = startCol; c <= startCol + VC; c++) {
-        const cell = world.at(c, r);
-        if (!cell) continue;
-        const sx = c * CELL - cam.px;
-        const sy = r * CELL - cam.py;
-        if (cell.wallRight) { ctx.moveTo(sx + CELL, sy); ctx.lineTo(sx + CELL, sy + CELL); }
-        if (cell.wallDown) { ctx.moveTo(sx, sy + CELL); ctx.lineTo(sx + CELL, sy + CELL); }
-
-        // World-boundary perimeter wall (top / left / right / bottom edges).
-        if (r === 0) { ctx.moveTo(sx, sy); ctx.lineTo(sx + CELL, sy); }
-        if (c === 0) { ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + CELL); }
-        if (r === WR - 1) { ctx.moveTo(sx, sy + CELL); ctx.lineTo(sx + CELL, sy + CELL); }
-        if (c === WC - 1) { ctx.moveTo(sx + CELL, sy); ctx.lineTo(sx + CELL, sy + CELL); }
-      }
-    }
-    ctx.save();
-    ctx.strokeStyle = "#747d89";
-    ctx.lineWidth = 5.5;
-    ctx.shadowColor = "rgba(0, 0, 0, 0.58)";
-    ctx.shadowBlur = 3;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 3;
-    ctx.stroke();
-    ctx.restore();
-
-    // A restrained top highlight makes walls feel seated on the floor.
-    ctx.strokeStyle = "rgba(225, 231, 238, 0.34)";
-    ctx.lineWidth = 1.05;
-    ctx.stroke();
-    ctx.lineCap = "butt";
+    drawWalls(ctx, {
+      cam,
+      world,
+      cellSize: CELL,
+      viewCols: VC,
+      viewRows: VR,
+      worldCols: WC,
+      worldRows: WR,
+    });
 
   }
 

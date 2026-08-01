@@ -1,68 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wander</title>
-  <style>
-    :root { --bg: #0f1115; --fg: #e6e6e6; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      user-select: none;
-    }
-    h1 { font-weight: 600; letter-spacing: 2px; }
-    #stage { display: flex; gap: 16px; align-items: stretch; }
-    canvas {
-      background: #161a21;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      touch-action: none;
-    }
-    #stats {
-      width: 210px;
-      background: #161a21;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      padding: 16px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .stats-name {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .stats-rows { display: flex; flex-direction: column; gap: 12px; }
-    .stats-row { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
-    .stats-head { display: flex; justify-content: space-between; opacity: 0.85; }
-    .stats-value { font-variant-numeric: tabular-nums; font-weight: 600; }
-    .stats-bar {
-      height: 8px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.10);
-      overflow: hidden;
-    }
-    .stats-fill { height: 100%; border-radius: 4px; transition: width 0.2s ease; }
-    #hint { font-size: 14px; opacity: 0.55; }
-    #controls { display: flex; gap: 8px; align-items: center; font-size: 13px; opacity: 0.7; cursor: pointer; }
-    #controls input { cursor: pointer; }
-    #version { font-size: 13px; opacity: 0.4; font-variant-numeric: tabular-nums; }
-  </style>
+  <title>Maze</title>
+  <link rel="stylesheet" href="./src/ui/styles.css" />
 </head>
+
 <body>
-  <h1>WANDER</h1>
+  <h1>Maze Wanderer</h1>
   <div id="stage">
     <canvas id="game" width="640" height="480"></canvas>
     <aside id="stats"></aside>
@@ -70,7 +17,7 @@
   <div id="hint">Arrows / WASD — move</div>
   <label id="controls"><input type="checkbox" id="debug" /> debug grid &amp; coords</label>
   <div id="version">version: <span id="ver">—</span></div>
-
-  <script type="module" src="./game.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
+
 </html>

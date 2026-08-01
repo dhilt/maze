@@ -1,4 +1,4 @@
-// Procedural old-stone floor.
+// Old-stone floor theme.
 //
 // The layout is generated once in world coordinates, then only the visible
 // stones are painted each frame. Camera movement therefore reveals the same

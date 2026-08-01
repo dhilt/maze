@@ -1,4 +1,4 @@
-// Graphics module: vector sprite generation only.
+// Knight sprite module: vector sprite generation only.
 //
 // The public contract intentionally stays small: buildSprites() returns four
 // directions with four walk frames each. Every direction is drawn as its own

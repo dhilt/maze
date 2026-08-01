@@ -1,0 +1,10 @@
+{
+  "name": "wander",
+  "version": "1.0.0",
+  "description": "A 2D object wandering an empty field (no mechanics yet)",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  }
+}

@@ -1,0 +1,10 @@
+# Dependencies (none currently — zero-dep project — but future-proof)
+node_modules/
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

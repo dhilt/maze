@@ -9,16 +9,7 @@
 // The layout is not guaranteed solvable; density just controls how many edges
 // become walls.
 
-// mulberry32 — tiny seeded PRNG, so a given seed reproduces the same maze.
-function mulberry32(a) {
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { createRandom } from "./random.js";
 
 // Place canonical walls on cell edges with probability = density/100.
 //   density 0   → no walls at all
@@ -27,7 +18,7 @@ function mulberry32(a) {
 // impassable via world bounds.
 export function generateMaze(world, { density = 30, seed = world.seed } = {}) {
   const p = Math.max(0, Math.min(100, density)) / 100;
-  const rand = mulberry32(seed >>> 0);
+  const rand = createRandom(seed >>> 0);
 
   for (let y = 0; y < world.height; y++) {
     for (let x = 0; x < world.width; x++) {

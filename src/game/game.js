@@ -1,6 +1,7 @@
 import { createCharacter } from "../entities/character.js";
 import { createRenderer } from "../rendering/renderer.js";
 import { createStatsPanel } from "../ui/stats-panel.js";
+import { placeExit } from "../world/exit.js";
 import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
 import { createActionAdapter } from "./actions.js";
@@ -30,14 +31,22 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     floorStyle: config.floorStyle,
   });
 
+  const spawn = {
+    x: Math.floor(config.worldCols / 2),
+    y: Math.floor(config.worldRows / 2),
+  };
   const world = generateWorld({
     width: config.worldCols,
     height: config.worldRows,
     seed: config.worldSeed,
   });
+  const mazeSeed = config.wallSeed ?? (Math.random() * 0x100000000) >>> 0;
   generateMaze(world, {
     density: config.wallDensity,
-    seed: config.wallSeed ?? (Math.random() * 0x100000000) >>> 0,
+    seed: mazeSeed,
+  });
+  placeExit(world, {
+    seed: (mazeSeed ^ 0x9e3779b9) >>> 0,
   });
 
   const character = createCharacter({ name: "Sir Roland" });
@@ -45,8 +54,8 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
   statsPanel.update(character);
 
   const player = {
-    col: Math.floor(config.worldCols / 2),
-    row: Math.floor(config.worldRows / 2),
+    col: spawn.x,
+    row: spawn.y,
     facing: "down",
   };
   const input = createKeyboardInput(window);

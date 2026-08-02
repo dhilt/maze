@@ -12,6 +12,7 @@ function createCell(x, y) {
     y,
     wallRight: false,
     wallDown: false,
+    exit: false,
     // Cell-local, serialisable object data. Rendering layer and interactivity are
     // properties of each future object, not separate containers on the cell.
     objects: [],

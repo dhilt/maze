@@ -4,6 +4,7 @@
 // Gets its sprites from the character renderer; gets plain state + camera from the game loop.
 
 import { buildAttackSprites, buildSprites } from "./character/knight-sprites.js";
+import { drawExits } from "./exits.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
 import { drawWalls } from "./walls.js";
 
@@ -13,9 +14,8 @@ export function createRenderer(ctx, config) {
   const {
     cellSize: CELL,
     viewCols: VC, viewRows: VR,
-    worldCols: WC, worldRows: WR,
     phases: PHASES,
-    margin: MARGIN, debug,
+    debug,
     floorStyle = "crypt",
   } = config;
 
@@ -30,11 +30,11 @@ export function createRenderer(ctx, config) {
   function getFloor(world, requestedStyle) {
     const seed = Number.isFinite(world.seed) ? world.seed : 1;
     const style = isFloorStyle(requestedStyle) ? requestedStyle : "stone";
-    const cacheKey = `${style}:${seed}`;
+    const cacheKey = `${style}:${seed}:${world.width}x${world.height}`;
     if (!floorRenderer || floorCacheKey !== cacheKey) {
       floorRenderer = createFloor(style, {
-        worldWidth: WC * CELL,
-        worldHeight: WR * CELL,
+        worldWidth: world.width * CELL,
+        worldHeight: world.height * CELL,
         seed,
       });
       floorCacheKey = cacheKey;
@@ -43,7 +43,7 @@ export function createRenderer(ctx, config) {
   }
 
   // Draw the continuous floor, optional gameplay grid, then the maze walls.
-  function drawWorld(cam, world, dbg, activeFloorStyle) {
+  function drawWorld(cam, world, dbg, activeFloorStyle, time) {
     getFloor(world, activeFloorStyle).draw(ctx, cam, W, H);
 
     // The gameplay grid is a debug overlay only. With debug off the slabs
@@ -58,7 +58,7 @@ export function createRenderer(ctx, config) {
       ctx.font = numFont;
       for (let r = startRow; r <= startRow + VR; r++) {
         for (let c = startCol; c <= startCol + VC; c++) {
-          if (c < 0 || c >= WC || r < 0 || r >= WR) continue;
+          if (c < 0 || c >= world.width || r < 0 || r >= world.height) continue;
           const sx = c * CELL - cam.px;
           const sy = r * CELL - cam.py;
           ctx.strokeRect(sx + 0.5, sy + 0.5, CELL, CELL);
@@ -68,14 +68,23 @@ export function createRenderer(ctx, config) {
       }
     }
 
+    drawExits(ctx, {
+      cam,
+      world,
+      cellSize: CELL,
+      viewCols: VC,
+      viewRows: VR,
+      time,
+    });
+
     drawWalls(ctx, {
       cam,
       world,
       cellSize: CELL,
       viewCols: VC,
       viewRows: VR,
-      worldCols: WC,
-      worldRows: WR,
+      worldCols: world.width,
+      worldRows: world.height,
     });
 
   }
@@ -112,9 +121,18 @@ export function createRenderer(ctx, config) {
     const { cam, world } = state;
     const dbg = state.debug !== undefined ? state.debug : debug; // live toggle, else config default
     const activeFloorStyle = state.floorStyle || floorStyle;
+    const time = Number.isFinite(state.tick?.time) ? state.tick.time : 0;
     ctx.clearRect(0, 0, W, H);
-    drawWorld(cam, world, dbg, activeFloorStyle);
+
+    // All world-space rendering is clipped to the actual world rectangle. This
+    // keeps floor themes and effects from leaking into a centred empty margin.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-cam.px, -cam.py, world.width * CELL, world.height * CELL);
+    ctx.clip();
+    drawWorld(cam, world, dbg, activeFloorStyle, time);
     drawPlayer(state, cam);
+    ctx.restore();
   }
 
   return { render };

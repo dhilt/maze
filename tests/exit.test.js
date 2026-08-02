@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { placeExit } from "../src/world/exit.js";
+import { generateMaze } from "../src/world/maze.js";
+import { generateWorld } from "../src/world/world.js";
+
+function exitCoordinates(world) {
+  return world.cells
+    .filter((cell) => cell.exit)
+    .map(({ x, y }) => ({ x, y }));
+}
+
+test("places exactly one exit within two cells of the world perimeter", () => {
+  const world = generateWorld({ width: 20, height: 20, seed: 1 });
+  generateMaze(world, { density: 80, seed: 9876 });
+
+  const exit = placeExit(world, { seed: 12345 });
+
+  assert.deepEqual(exitCoordinates(world), [{ x: exit.x, y: exit.y }]);
+  assert.equal(
+    exit.x <= 2 ||
+      exit.y <= 2 ||
+      exit.x >= world.width - 3 ||
+      exit.y >= world.height - 3,
+    true,
+  );
+});
+
+test("exit placement is reproducible and replaces an earlier marker", () => {
+  const first = generateWorld({ width: 12, height: 9, seed: 1 });
+  const second = generateWorld({ width: 12, height: 9, seed: 1 });
+  generateMaze(first, { density: 33, seed: 2468 });
+  generateMaze(second, { density: 33, seed: 2468 });
+
+  placeExit(first, { seed: 1357 });
+  placeExit(second, { seed: 1357 });
+  assert.deepEqual(exitCoordinates(first), exitCoordinates(second));
+
+  placeExit(first, { seed: 9753 });
+  assert.equal(exitCoordinates(first).length, 1);
+});
+
+test("a one-cell world uses its only cell as the exit", () => {
+  const world = generateWorld({ width: 1, height: 1, seed: 1 });
+  const exit = placeExit(world, { seed: 42 });
+
+  assert.equal(exit, world.at(0, 0));
+  assert.equal(world.at(0, 0).exit, true);
+});

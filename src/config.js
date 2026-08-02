@@ -1,7 +1,7 @@
 const PHASES = 4;
 const SECONDS_PER_TIME_UNIT = 0.1;
 
-export const VERSION = "0.44";
+export const VERSION = "0.47";
 
 export const GAME_CONFIG = Object.freeze({
   cellSize: 64,

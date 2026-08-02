@@ -1,5 +1,14 @@
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+function axisBounds(worldCells, viewCells, cellSize) {
+  const overflow = (worldCells - viewCells) * cellSize;
+  if (overflow >= 0) return { min: 0, max: overflow };
+
+  // A world smaller than the viewport has one fixed, centred camera position.
+  const centered = overflow / 2;
+  return { min: centered, max: centered };
+}
+
 export function createCamera({
   player,
   movement,
@@ -9,11 +18,19 @@ export function createCamera({
   viewRows,
   margin,
 }) {
-  const maxX = Math.max(0, (world.width - viewCols) * cellSize);
-  const maxY = Math.max(0, (world.height - viewRows) * cellSize);
+  const xBounds = axisBounds(world.width, viewCols, cellSize);
+  const yBounds = axisBounds(world.height, viewRows, cellSize);
   const state = {
-    px: clamp((player.col - Math.floor(viewCols / 2)) * cellSize, 0, maxX),
-    py: clamp((player.row - Math.floor(viewRows / 2)) * cellSize, 0, maxY),
+    px: clamp(
+      (player.col - Math.floor(viewCols / 2)) * cellSize,
+      xBounds.min,
+      xBounds.max,
+    ),
+    py: clamp(
+      (player.row - Math.floor(viewRows / 2)) * cellSize,
+      yBounds.min,
+      yBounds.max,
+    ),
   };
 
   function update() {
@@ -28,8 +45,8 @@ export function createCamera({
     if (position.y < top) state.py = position.y - margin * cellSize;
     else if (position.y > bottom) state.py = position.y - (viewRows - 1 - margin) * cellSize;
 
-    state.px = clamp(state.px, 0, maxX);
-    state.py = clamp(state.py, 0, maxY);
+    state.px = clamp(state.px, xBounds.min, xBounds.max);
+    state.py = clamp(state.py, yBounds.min, yBounds.max);
   }
 
   return { state, update };

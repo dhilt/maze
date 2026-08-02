@@ -1,4 +1,4 @@
-import { hasWall } from "../world/maze.js";
+import { hasWall } from "../../world/maze.js";
 
 const DIRS = {
   up: [0, -1],

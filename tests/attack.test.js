@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAttack } from "../src/game/attack.js";
+import { createAttack } from "../src/game/actions/attack.js";
 
 test("attack is inactive until begun", () => {
   const attack = createAttack();

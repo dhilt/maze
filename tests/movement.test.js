@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createMovement } from "../src/game/movement.js";
+import { createMovement } from "../src/game/actions/movement.js";
 
 const step = (dx, dy, dir, timeCost = 5) => ({ kind: "step", dx, dy, timeCost, facing: dir });
 const turn = (dir) => ({ kind: "turn", dx: 0, dy: 0, timeCost: 1, facing: dir });

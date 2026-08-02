@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createActionAdapter } from "../src/game/actions.js";
+import { createActionAdapter } from "../src/game/actions/adapter.js";
 import { generateWorld } from "../src/world/world.js";
 
 const COSTS = { step: 5, turn: 1, attack: 5 };

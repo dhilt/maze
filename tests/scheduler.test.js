@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createActionScheduler } from "../src/game/scheduler.js";
+import { createActionScheduler } from "../src/game/actions/scheduler.js";
 
 // A timer-based fake executor (matches the real begin/update contract), so
 // logical time-cost and leftover-unit behavior are exercised here too.

@@ -4,14 +4,14 @@ import { createStatsPanel } from "../ui/stats-panel.js";
 import { placeExit } from "../world/exit.js";
 import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
-import { createActionAdapter } from "./actions.js";
-import { createAttack } from "./attack.js";
+import { createActionAdapter } from "./actions/adapter.js";
+import { createAttack } from "./actions/attack.js";
 import { createCamera } from "./camera.js";
 import { createClock } from "./clock.js";
 import { createHealthDrain } from "./health-drain.js";
 import { createKeyboardInput } from "./input.js";
-import { createMovement } from "./movement.js";
-import { createActionScheduler } from "./scheduler.js";
+import { createMovement } from "./actions/movement.js";
+import { createActionScheduler } from "./actions/scheduler.js";
 import { createGameTime } from "./time.js";
 
 export function createGame({ canvas, statsRoot, debugControl, config, onFinish }) {

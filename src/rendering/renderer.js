@@ -6,7 +6,6 @@
 import { buildAttackSprites, buildSprites } from "./character/knight-sprites.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
 import { drawWalls } from "./walls.js";
-import { TERRAIN, DEFAULT_TERRAIN } from "../world/terrain.js";
 
 // createRenderer(ctx, config) → { render(state) }
 // config: { cellSize, viewCols, viewRows, worldCols, worldRows, phases, margin, debug }
@@ -43,60 +42,29 @@ export function createRenderer(ctx, config) {
     return floorRenderer;
   }
 
-  // Draw the visible slice of the world, offset by the camera (in pixels).
-  // Each cell is filled with its terrain colour, then the grid + debug labels.
+  // Draw the continuous floor, optional gameplay grid, then the maze walls.
   function drawWorld(cam, world, dbg, activeFloorStyle) {
-    ctx.fillStyle = "#12151b";
-    ctx.fillRect(0, 0, W, H);
-
-    const startCol = Math.floor(cam.px / CELL);
-    const startRow = Math.floor(cam.py / CELL);
-
-    const visibleCells = [];
-
-    for (let r = startRow; r <= startRow + VR; r++) {
-      for (let c = startCol; c <= startCol + VC; c++) {
-        if (c < 0 || c >= WC || r < 0 || r >= WR) continue;
-        const sx = c * CELL - cam.px;
-        const sy = r * CELL - cam.py;
-
-        const cell = world.at(c, r);
-        const terrainId = TERRAIN[cell.terrain] ? cell.terrain : DEFAULT_TERRAIN;
-        const terr = TERRAIN[terrainId];
-        ctx.fillStyle = terr.color;
-        ctx.fillRect(sx, sy, CELL, CELL);
-        visibleCells.push({ c, r, sx, sy, cell, terrainId });
-      }
-    }
-
-    // Clip one continuous world-space stone surface to stone terrain cells.
-    // Slab joints are intentionally unrelated to the 64px gameplay grid.
-    ctx.save();
-    ctx.beginPath();
-    let hasStone = false;
-    for (const item of visibleCells) {
-      if (item.terrainId !== "stone") continue;
-      ctx.rect(item.sx, item.sy, CELL, CELL);
-      hasStone = true;
-    }
-    if (hasStone) {
-      ctx.clip();
-      getFloor(world, activeFloorStyle).draw(ctx, cam, W, H);
-    }
-    ctx.restore();
+    getFloor(world, activeFloorStyle).draw(ctx, cam, W, H);
 
     // The gameplay grid is a debug overlay only. With debug off the slabs
     // read as one continuous floor instead of a board of stamped cells.
     if (dbg) {
+      const startCol = Math.floor(cam.px / CELL);
+      const startRow = Math.floor(cam.py / CELL);
       ctx.strokeStyle = "rgba(230, 235, 242, 0.075)";
       ctx.lineWidth = 1;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.font = numFont;
-      for (const item of visibleCells) {
-        ctx.strokeRect(item.sx + 0.5, item.sy + 0.5, CELL, CELL);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
-        ctx.fillText(`${item.c}/${item.r}`, item.sx + CELL / 2, item.sy + CELL / 2);
+      for (let r = startRow; r <= startRow + VR; r++) {
+        for (let c = startCol; c <= startCol + VC; c++) {
+          if (c < 0 || c >= WC || r < 0 || r >= WR) continue;
+          const sx = c * CELL - cam.px;
+          const sy = r * CELL - cam.py;
+          ctx.strokeRect(sx + 0.5, sy + 0.5, CELL, CELL);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+          ctx.fillText(`${c}/${r}`, sx + CELL / 2, sy + CELL / 2);
+        }
       }
     }
 

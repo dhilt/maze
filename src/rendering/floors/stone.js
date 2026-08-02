@@ -215,8 +215,7 @@ export function createStoneFloor({ worldWidth, worldHeight, seed = 1 }) {
     const top = cam.py - 4;
     const bottom = cam.py + viewportHeight + 4;
 
-    // The caller supplies a terrain-cell clip. Fill it with recessed grout
-    // before laying slabs over it.
+    // Fill the viewport with recessed grout before laying slabs over it.
     ctx.fillStyle = "#22272e";
     ctx.fillRect(0, 0, viewportWidth, viewportHeight);
 

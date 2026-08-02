@@ -1,9 +1,7 @@
 const PHASES = 4;
-const PHASE_TIME = 0.11;
-const ATTACK_FRAMES = 7;
-const ATTACK_FRAME_TIME = 0.09;
+const ACTION_TIME = 0.5; // unified duration of every character action (seconds)
 
-export const VERSION = "0.31";
+export const VERSION = "0.36";
 
 export const GAME_CONFIG = Object.freeze({
   cellSize: 64,
@@ -13,11 +11,7 @@ export const GAME_CONFIG = Object.freeze({
   worldRows: 50,
   cameraMargin: 2,
   phases: PHASES,
-  phaseTime: PHASE_TIME,
-  cellTime: PHASE_TIME * PHASES,
-  attackFrames: ATTACK_FRAMES,
-  attackFrameTime: ATTACK_FRAME_TIME,
-  attackTime: ATTACK_FRAME_TIME * ATTACK_FRAMES,
+  actionTime: ACTION_TIME,
   debug: false,
   floorStyle: "crypt",
   worldSeed: 1,

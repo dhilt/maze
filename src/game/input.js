@@ -9,23 +9,25 @@ const KEY_MAP = Object.freeze({
   KeyD: "right",
 });
 
-export function createKeyboardInput(target = window, { canQueueAttack = () => true } = {}) {
+// Low-level input: exposes the held direction (for auto-repeat while a key is
+// down) and the stream of discrete presses (for the action buffer). It carries
+// no notion of the current action — the scheduler applies the buffering rules.
+export function createKeyboardInput(target = window) {
   const keys = Object.create(null);
   let lastAxis = "h";
-  let attackQueued = false;
+  const pressed = []; // discrete action ids since the last drain
 
   function onKeyDown(event) {
     if (event.code === "Space") {
-      // Don't stack another attack while one is already the active action.
-      if (!event.repeat && canQueueAttack()) attackQueued = true;
+      if (!event.repeat) pressed.push("attack");
       event.preventDefault();
       return;
     }
-
     const action = KEY_MAP[event.code];
     if (!action) return;
     keys[action] = true;
     lastAxis = action === "left" || action === "right" ? "h" : "v";
+    if (!event.repeat) pressed.push(action);
     event.preventDefault();
   }
 
@@ -38,28 +40,27 @@ export function createKeyboardInput(target = window, { canQueueAttack = () => tr
 
   function clear() {
     for (const action of Object.values(KEY_MAP)) keys[action] = false;
-    attackQueued = false;
+    pressed.length = 0;
   }
 
-  function hasAttackRequest() {
-    return attackQueued;
-  }
-
-  function consumeAttack() {
-    if (!attackQueued) return false;
-    attackQueued = false;
-    return true;
-  }
-
-  function getDirection() {
+  // The currently held direction (single axis, most recently pressed wins), or null.
+  function heldDirection() {
     let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     let dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
-
     if (dx !== 0 && dy !== 0) {
       if (lastAxis === "v") dx = 0;
       else dy = 0;
     }
-    return { dx, dy };
+    if (dx !== 0) return dx > 0 ? "right" : "left";
+    if (dy !== 0) return dy > 0 ? "down" : "up";
+    return null;
+  }
+
+  // Take the discrete presses recorded since the previous call.
+  function drainPressed() {
+    const out = pressed.slice();
+    pressed.length = 0;
+    return out;
   }
 
   function destroy() {
@@ -72,5 +73,5 @@ export function createKeyboardInput(target = window, { canQueueAttack = () => tr
   target.addEventListener("keyup", onKeyUp);
   target.addEventListener("blur", clear);
 
-  return { getDirection, hasAttackRequest, consumeAttack, destroy };
+  return { heldDirection, drainPressed, destroy };
 }

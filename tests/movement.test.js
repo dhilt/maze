@@ -4,80 +4,60 @@ import test from "node:test";
 import { createMovement } from "../src/game/movement.js";
 import { generateWorld } from "../src/world/world.js";
 
-test("movement completes one orthogonal cell and updates facing", () => {
+function makeMovement(world, player, actionTime = 0.5) {
+  return createMovement({ world, player, cellSize: 64, actionTime });
+}
+
+test("a clear direction steps one cell and faces it", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   const player = { col: 2, row: 2 };
-  const input = { getDirection: () => ({ dx: 1, dy: 0 }) };
-  const movement = createMovement({
-    world,
-    player,
-    input,
-    cellSize: 64,
-    cellTime: 0.44,
-  });
+  const movement = makeMovement(world, player);
 
-  movement.update(0.2);
+  movement.start("right");
   assert.equal(movement.facing, "right");
   assert.equal(movement.move.dx, 1);
+  assert.equal(movement.active, true);
 
-  movement.update(0.24);
-  assert.equal(player.col, 3);
-  assert.equal(player.row, 2);
+  movement.update(0.3);
+  assert.equal(movement.active, true); // still crossing
+  movement.update(0.2); // 0.5 total → completes
+  assert.equal(movement.active, false);
+  assert.deepEqual(player, { col: 3, row: 2 });
 });
 
-test("movement respects a blocking wall", () => {
+test("a blocked direction is an in-place turn/bump, not a step", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   world.at(2, 2).wallRight = true;
   const player = { col: 2, row: 2 };
-  const input = { getDirection: () => ({ dx: 1, dy: 0 }) };
-  const movement = createMovement({
-    world,
-    player,
-    input,
-    cellSize: 64,
-    cellTime: 0.44,
-  });
+  const movement = makeMovement(world, player);
 
-  movement.update(1);
-  assert.equal(movement.move, null);
-  assert.deepEqual(player, { col: 2, row: 2 });
+  movement.start("right");
+  assert.equal(movement.move, null); // no step
+  assert.equal(movement.active, true); // but busy for one action
+  assert.equal(movement.facing, "right"); // faces the wall
+
+  movement.update(0.5);
+  assert.equal(movement.active, false);
+  assert.deepEqual(player, { col: 2, row: 2 }); // did not move
 });
 
-test("facing turns toward a blocked direction from idle without moving", () => {
+test("the world boundary blocks a step (in-place action instead)", () => {
+  const world = generateWorld({ width: 3, height: 3, seed: 1 });
+  const player = { col: 0, row: 0 };
+  const movement = makeMovement(world, player);
+
+  movement.start("up"); // top boundary
+  assert.equal(movement.move, null);
+  assert.equal(movement.facing, "up");
+});
+
+test("update returns leftover time when an action completes", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
-  world.at(2, 1).wallDown = true; // wall directly above the player
   const player = { col: 2, row: 2 };
-  const input = { getDirection: () => ({ dx: 0, dy: -1 }) }; // pressing up into the wall
-  const movement = createMovement({
-    world,
-    player,
-    input,
-    cellSize: 64,
-    cellTime: 0.44,
-  });
+  const movement = makeMovement(world, player, 0.5);
 
-  movement.update(0.2);
-  assert.equal(movement.isIdle, true); // did not move
-  assert.deepEqual(player, { col: 2, row: 2 });
-  assert.equal(movement.facing, "up"); // but turned to face the wall
-});
-
-test("a queued action stops movement at the next cell boundary", () => {
-  const world = generateWorld({ width: 5, height: 5, seed: 1 });
-  const player = { col: 1, row: 2 };
-  const input = { getDirection: () => ({ dx: 1, dy: 0 }) };
-  const movement = createMovement({
-    world,
-    player,
-    input,
-    cellSize: 64,
-    cellTime: 0.44,
-  });
-
-  movement.update(0.2);
-  movement.update(0.5, { stopAtBoundary: true });
-
-  assert.deepEqual(player, { col: 2, row: 2 });
-  assert.equal(movement.move, null);
-  assert.equal(movement.isIdle, true);
+  movement.start("right");
+  assert.equal(movement.update(0.3), 0); // not done yet
+  const leftover = movement.update(0.25); // 0.55 total → 0.05 leftover
+  assert.ok(Math.abs(leftover - 0.05) < 1e-9);
 });

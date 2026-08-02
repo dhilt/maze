@@ -5,8 +5,10 @@ import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
 import { createAttack } from "./attack.js";
 import { createCamera } from "./camera.js";
+import { createClock } from "./clock.js";
 import { createKeyboardInput } from "./input.js";
 import { createMovement } from "./movement.js";
+import { createActionScheduler } from "./scheduler.js";
 
 export function createGame({ canvas, statsRoot, debugControl, config }) {
   const ctx = canvas.getContext("2d");
@@ -20,7 +22,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     worldCols: config.worldCols,
     worldRows: config.worldRows,
     phases: config.phases,
-    cellTime: config.cellTime,
+    cellTime: config.actionTime,
     margin: config.cameraMargin,
     debug: config.debug,
     floorStyle: config.floorStyle,
@@ -44,20 +46,15 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     col: Math.floor(config.worldCols / 2),
     row: Math.floor(config.worldRows / 2),
   };
-  const input = createKeyboardInput(window, {
-    canQueueAttack: () => !attack.active,
-  });
+  const input = createKeyboardInput(window);
   const movement = createMovement({
     world,
     player,
-    input,
     cellSize: config.cellSize,
-    cellTime: config.cellTime,
+    actionTime: config.actionTime,
   });
-  const attack = createAttack({
-    input,
-    duration: config.attackTime,
-  });
+  const attack = createAttack({ duration: config.actionTime });
+  const scheduler = createActionScheduler({ movement, attack, input });
   const camera = createCamera({
     player,
     movement,
@@ -68,30 +65,22 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     margin: config.cameraMargin,
   });
 
+  const clock = createClock({ maxDelta: 0.1 });
   let frameId = null;
-  let last = performance.now();
 
   function frame(now) {
-    const dt = Math.min((now - last) / 1000, 0.1);
-    last = now;
+    const tick = clock.tick(now); // { dt, time } — the shared time stream
 
-    if (attack.active) {
-      attack.update(dt);
-    } else {
-      attack.tryStart(movement.isIdle);
-      if (!attack.active) {
-        movement.update(dt, { stopAtBoundary: input.hasAttackRequest() });
-        attack.tryStart(movement.isIdle);
-      }
-    }
+    scheduler.update(tick.dt);
     camera.update();
     renderer.render({
       player,
-      move: movement.move,
-      attack: attack.state,
-      facing: movement.facing,
+      move: scheduler.move,
+      attack: scheduler.attackState,
+      facing: scheduler.facing,
       cam: camera.state,
       world,
+      tick,
       debug: debugControl?.checked ?? config.debug,
       floorStyle: config.floorStyle,
     });
@@ -100,7 +89,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
 
   function start() {
     if (frameId !== null) return;
-    last = performance.now();
+    clock.reset(performance.now());
     frameId = requestAnimationFrame(frame);
   }
 
@@ -113,9 +102,9 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
   function getState() {
     return {
       player,
-      move: movement.move,
-      attack: attack.state,
-      facing: movement.facing,
+      move: scheduler.move,
+      attack: scheduler.attackState,
+      facing: scheduler.facing,
       cam: camera.state,
       world,
       character,

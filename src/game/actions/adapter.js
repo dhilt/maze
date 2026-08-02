@@ -1,4 +1,4 @@
-import { hasWall } from "../../world/maze.js";
+import { getWall, hasWall } from "../../world/maze.js";
 
 const DIRS = {
   up: [0, -1],
@@ -10,12 +10,24 @@ const DIRS = {
 // The adapter turns a DESIRED action into the CONCRETE action to execute, judged
 // against the live world/player state right before it runs. It may:
 //   * pass through   — "attack" → an attack;
-//   * transform      — a move into a wall → a one-unit turn/bump;
+//   * transform      — a move into a wall → a one-unit turn/bump, or an attack
+//                      facing a stored wall → a wallAttack;
 //   * cancel         — return null, and the scheduler drops it from the queue.
 // Every concrete action carries an integer timeCost in logical game-time units.
 export function createActionAdapter({ world, player, costs }) {
   function adapt(desired) {
     if (desired === "attack") {
+      const [dx, dy] = DIRS[player.facing] ?? [0, 0];
+      if (getWall(world, player.col, player.row, dx, dy) !== null) {
+        return {
+          kind: "wallAttack",
+          dx: 0,
+          dy: 0,
+          timeCost: costs.attack,
+          facing: null,
+          target: { x: player.col, y: player.row, dx, dy },
+        };
+      }
       return { kind: "attack", dx: 0, dy: 0, timeCost: costs.attack, facing: null };
     }
 

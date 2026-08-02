@@ -10,6 +10,8 @@ test("cells expose independent serialisable object containers", () => {
 
   assert.deepEqual(left.objects, []);
   assert.deepEqual(right.objects, []);
+  assert.equal(left.wallRight, null);
+  assert.equal(left.wallDown, null);
   assert.notEqual(left.objects, right.objects);
 
   left.objects.push({ id: "bones-1", kind: "bones", layer: "background" });

@@ -1,4 +1,4 @@
-export const VERSION = "0.49";
+export const VERSION = "0.53";
 
 // Physical seconds are converted to logical game-time units before they reach
 // the action bus. At normal speed 1 unit lasts 100 ms.
@@ -30,4 +30,7 @@ export const GAME_CONFIG = Object.freeze({
   worldSeed: 1,
   wallDensity: 33,
   wallSeed: null,
+  baseWallHealth: 20,
+  baseWallDefense: 2,
+  wallImpactWear: 1,
 });

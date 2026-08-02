@@ -3,15 +3,15 @@
 // an at(x, y) accessor. The whole thing is JSON-serialisable (save/load, editor).
 
 // A single cell. Coordinates are its first properties; more live alongside them.
-// wallRight / wallDown store thin edge-walls canonically: the wall on the right
-// of (x, y) is the very same wall as the left of (x+1, y), so the two adjacent
-// cells can never disagree. Populated by the maze generator (maze.js).
+// wallRight / wallDown store nullable edge-wall objects canonically: the wall
+// on the right of (x, y) is the very same wall as the left of (x+1, y), so the
+// two adjacent cells can never disagree. Populated by the maze generator.
 function createCell(x, y) {
   return {
     x,
     y,
-    wallRight: false,
-    wallDown: false,
+    wallRight: null,
+    wallDown: null,
     exit: false,
     // Cell-local, serialisable object data. Rendering layer and interactivity are
     // properties of each future object, not separate containers on the cell.

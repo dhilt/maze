@@ -4,7 +4,9 @@
 // short turn) or cancelled (dropped from the queue).
 //
 // Queue rules: run in order pressed; cap 2 (overflow dropped); no two consecutive
-// equal entries. When idle & empty, a held direction refills it (auto-repeat).
+// equal directions. A discrete attack may buffer another attack so repeated
+// strikes do not require frame-perfect input. When idle & empty, a held
+// direction refills it (auto-repeat).
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
 export function createActionScheduler({ adapter, movement, attack, input, onStep }) {
@@ -13,12 +15,12 @@ export function createActionScheduler({ adapter, movement, attack, input, onStep
 
   // Registry of executors by resolved-action kind. Adding an action kind means
   // adding an entry here; an unknown kind is a bug, so fail loudly.
-  const executors = { step: movement, turn: movement, attack };
+  const executors = { step: movement, turn: movement, attack, wallAttack: attack };
 
   function enqueue(id) {
     if (queue.length >= 2) return;
     const last = queue.length ? queue[queue.length - 1] : null;
-    if (id === last) return;
+    if (id === last && id !== "attack") return;
     queue.push(id);
   }
 

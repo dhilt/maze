@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { GAME_CONFIG } from "../src/config.js";
 import { createGame } from "../src/game/game.js";
+import { createWall } from "../src/world/maze.js";
 
 function createContext() {
   return new Proxy({}, {
@@ -131,5 +132,38 @@ test("a living hero still finishes when landing on the exit", () => {
     assert.equal(state.character.stats.health, 20);
     assert.equal(state.player.col, 3);
     assert.deepEqual(outcomes, ["escaped"]);
+  });
+});
+
+test("a blocked turn followed by attack breaks the wall in front of the hero", () => {
+  withGameEnvironment((environment) => {
+    const { game, state, outcomes } = createTestGame({
+      speed: 10,
+      health: 20,
+      exitX: 4,
+    });
+    state.world.at(2, 0).wallRight = createWall({
+      health: 5,
+      defense: 2,
+      impactWear: 1,
+    });
+
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowRight"));
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowRight"));
+    environment.target.dispatchEvent(keyEvent("keydown", "Space"));
+    game.start();
+    environment.runFrame();
+
+    assert.equal(state.world.at(2, 0).wallRight, null);
+    assert.equal(state.world.at(2, 0).objects[0].kind, "wall-rubble");
+    assert.equal(state.player.facing, "right");
+    assert.equal(state.player.col, 2, "attacking must not move the hero");
+    assert.deepEqual(outcomes, []);
+
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowRight"));
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowRight"));
+    environment.runFrame(200);
+    assert.equal(state.player.col, 3, "background rubble must remain walkable");
+    game.stop();
   });
 });

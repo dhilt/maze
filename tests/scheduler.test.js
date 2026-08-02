@@ -19,7 +19,7 @@ function makeExecutor() {
     },
     get active() { return a !== null; },
     get move() { return a && a.kind === "step" ? a : null; },
-    get state() { return a && a.kind === "attack" ? a : null; },
+    get state() { return a && (a.kind === "attack" || a.kind === "wallAttack") ? a : null; },
     facing: "down",
   };
 }
@@ -42,6 +42,7 @@ function makeInput() {
 const stepOf = (dir) => ({ kind: "step", dx: 0, dy: 0, timeCost: 5, facing: dir });
 const turnOf = (dir) => ({ kind: "turn", dx: 0, dy: 0, timeCost: 1, facing: dir });
 const attackOf = () => ({ kind: "attack", dx: 0, dy: 0, timeCost: 5, facing: null });
+const wallAttackOf = () => ({ kind: "wallAttack", timeCost: 5, facing: null });
 
 function resolveByKind(map) {
   return (id) => (id in map ? map[id]() : stepOf(id));
@@ -112,6 +113,25 @@ test("FIFO keeps the first next action; overflow is dropped", () => {
   assert.equal(attack.log.length, 0);
 });
 
+test("one repeated attack can be buffered for a durable target", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  const adapter = makeAdapter(resolveByKind({ attack: attackOf }));
+  const scheduler = createActionScheduler({ adapter, movement, attack, input });
+
+  input.queue("attack", "attack", "attack");
+  scheduler.update(1);
+
+  assert.equal(scheduler.activeId, "attack");
+  assert.equal(scheduler.buffered, "attack");
+  assert.equal(attack.log.length, 1);
+
+  scheduler.update(4);
+  assert.equal(attack.log.length, 2, "the buffered strike starts after the first");
+  assert.equal(scheduler.activeId, "attack");
+});
+
 test("a cancelled held direction is adapted once per frame, not spun", () => {
   const movement = makeExecutor();
   const attack = makeExecutor();
@@ -135,6 +155,25 @@ test("an unknown resolved kind throws instead of silently moving", () => {
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
   assert.throws(() => scheduler.update(0.1), /No executor for action kind: teleport/);
+});
+
+test("a wall attack uses the attack executor", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  input.queue("attack");
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ attack: wallAttackOf })),
+    movement,
+    attack,
+    input,
+  });
+
+  scheduler.update(1);
+
+  assert.equal(attack.log.length, 1);
+  assert.equal(attack.log[0].kind, "wallAttack");
+  assert.equal(scheduler.attackState.kind, "wallAttack");
 });
 
 test("a held direction auto-repeats when the queue is empty", () => {

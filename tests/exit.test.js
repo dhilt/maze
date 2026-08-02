@@ -13,7 +13,13 @@ function exitCoordinates(world) {
 
 test("places exactly one exit within two cells of the world perimeter", () => {
   const world = generateWorld({ width: 20, height: 20, seed: 1 });
-  generateMaze(world, { density: 80, seed: 9876 });
+  generateMaze(world, {
+    density: 80,
+    seed: 9876,
+    baseHealth: 20,
+    defense: 2,
+    impactWear: 1,
+  });
 
   const exit = placeExit(world, { seed: 12345 });
 
@@ -30,8 +36,9 @@ test("places exactly one exit within two cells of the world perimeter", () => {
 test("exit placement is reproducible and replaces an earlier marker", () => {
   const first = generateWorld({ width: 12, height: 9, seed: 1 });
   const second = generateWorld({ width: 12, height: 9, seed: 1 });
-  generateMaze(first, { density: 33, seed: 2468 });
-  generateMaze(second, { density: 33, seed: 2468 });
+  const wall = { baseHealth: 20, defense: 2, impactWear: 1 };
+  generateMaze(first, { density: 33, seed: 2468, ...wall });
+  generateMaze(second, { density: 33, seed: 2468, ...wall });
 
   placeExit(first, { seed: 1357 });
   placeExit(second, { seed: 1357 });

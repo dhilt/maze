@@ -1,12 +1,12 @@
 // Stats panel — a pure view that reflects a character state object into a DOM
-// panel beside the viewport. Give it the character; call update() whenever the
-// state changes (once now; per-hit later when combat exists).
+// panel beside the viewport. Rebuild it when a whole stat changes; fractional
+// Health and Attack remainders update independently between rebuilds.
 //
 // Stat rows are declarative, so adding a stat is one entry here.
 
 const ROWS = [
-  { type: "bar",   label: "Health",  key: "health", drain: true, hideWhenEmpty: true },
-  { type: "value", label: "Attack",  key: "attack" },
+  { type: "bar",   label: "Health",  key: "health", remainder: true, hideWhenEmpty: true },
+  { type: "bar",   label: "Attack",  key: "attack", remainder: true, hideWhenEmpty: true },
   { type: "value", label: "Defense", key: "defense" },
   { type: "bar",   label: "Morale",  key: "morale" },
 ];
@@ -25,24 +25,22 @@ function barColor(frac) {
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
 
-function barRow(label, value, max, withDrain, hideWhenEmpty) {
+function barRow(label, key, value, max, withRemainder, hideWhenEmpty) {
   const frac = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const color = barColor(frac);
-  // At zero health the numeric value is sufficient; neither the empty track nor
-  // its drain indicator represents anything useful.
+  // At zero the numeric value is sufficient; empty tracks carry no information.
   const visible = !hideWhenEmpty || value > 0;
   const bar = visible
     ? `<div class="stats-bar"><div class="stats-fill" style="width:${frac * 100}%;background:${color}"></div></div>`
     : "";
-  // A 1px drain bar under Health: time until the next -1 HP, updated live.
-  const drain = withDrain && visible
-    ? `<div class="stats-drain"><div class="stats-drain-fill" style="width:100%;background:${color}"></div></div>`
+  const remainder = withRemainder && visible
+    ? `<div class="stats-remainder"><div class="stats-remainder-fill" data-stat="${key}" style="width:100%;background:${color}"></div></div>`
     : "";
   return (
     `<div class="stats-row">` +
       `<div class="stats-head"><span>${label}</span><span class="stats-value">${value} / ${max}</span></div>` +
       bar +
-      drain +
+      remainder +
     `</div>`
   );
 }
@@ -56,8 +54,8 @@ function valueRow(label, value) {
 }
 
 export function createStatsPanel(root) {
-  let current = null; // last character, for the live drain colour
-  let drainFill = null; // the 1px drain fill element (re-cached on rebuild)
+  let current = null;
+  const remainderFills = new Map();
 
   function update(ch) {
     current = ch;
@@ -65,9 +63,10 @@ export function createStatsPanel(root) {
       row.type === "bar"
         ? barRow(
             row.label,
+            row.key,
             ch.stats[row.key],
             ch.statsMax[row.key],
-            row.drain,
+            row.remainder,
             row.hideWhenEmpty,
           )
         : valueRow(row.label, ch.stats[row.key])
@@ -77,19 +76,23 @@ export function createStatsPanel(root) {
       `<div class="stats-name">${ch.name}</div>` +
       `<div class="stats-rows">${rows}</div>`;
 
-    drainFill = root.querySelector(".stats-drain-fill");
+    remainderFills.clear();
+    for (const row of ROWS.filter((candidate) => candidate.remainder)) {
+      const fill = root.querySelector(`.stats-remainder-fill[data-stat="${row.key}"]`);
+      if (fill) remainderFills.set(row.key, fill);
+    }
   }
 
-  // remaining ∈ [0,1]: fraction of the current drain interval left. The bar
-  // empties right-to-left; its colour tracks the (wide) health bar.
-  function setDrain(remaining) {
-    if (!drainFill || !current) return;
+  // Remaining is the fraction of the current sub-point still available.
+  function setRemainder(stat, remaining) {
+    const fill = remainderFills.get(stat);
+    if (!fill || !current) return;
     const r = Math.max(0, Math.min(1, remaining));
-    const healthMax = current.statsMax.health;
-    const frac = healthMax > 0 ? current.stats.health / healthMax : 0;
-    drainFill.style.width = `${r * 100}%`;
-    drainFill.style.background = barColor(frac);
+    const max = current.statsMax[stat];
+    const frac = max > 0 ? current.stats[stat] / max : 0;
+    fill.style.width = `${r * 100}%`;
+    fill.style.background = barColor(frac);
   }
 
-  return { update, setDrain };
+  return { update, setRemainder };
 }

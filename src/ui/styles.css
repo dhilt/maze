@@ -154,17 +154,16 @@ canvas {
   transition: width 0.2s ease;
 }
 
-/* 1px live indicator under Health: time until the next -1 HP, draining
-   right-to-left with global time. No transition — it's set every frame. */
-.stats-drain {
+/* 1px remainder for the current Health or Attack point. */
+.stats-remainder {
   height: 1px;
   margin-top: -3px;
   overflow: hidden;
 }
 
-.stats-drain-fill {
+.stats-remainder-fill {
   height: 100%;
-  opacity: 0.6; /* muted so the live indicator doesn't grab attention */
+  opacity: 0.6;
 }
 
 #hint {

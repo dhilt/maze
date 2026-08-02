@@ -6,6 +6,7 @@
 import { buildAttackSprites, buildSprites } from "./character/knight-sprites.js";
 import { drawExits } from "./exits.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
+import { drawObjects } from "./objects/index.js";
 import { drawWalls } from "./walls.js";
 
 // createRenderer(ctx, config) → { render(state) }
@@ -67,6 +68,14 @@ export function createRenderer(ctx, config) {
         }
       }
     }
+
+    drawObjects(ctx, {
+      cam,
+      world,
+      cellSize: CELL,
+      viewCols: VC,
+      viewRows: VR,
+    });
 
     drawExits(ctx, {
       cam,

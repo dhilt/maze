@@ -21,13 +21,36 @@ test("removes both health bars when health reaches zero", () => {
   const character = createCharacter({ stats: { health: 1 } });
 
   panel.update(character);
-  assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 2);
-  assert.equal(occurrences(root.innerHTML, 'class="stats-drain"'), 1);
+  assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 3);
+  assert.equal(occurrences(root.innerHTML, 'class="stats-remainder"'), 2);
 
   damage(character, 1);
   panel.update(character);
 
   assert.match(root.innerHTML, />0 \/ 20</);
-  assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 1);
-  assert.equal(occurrences(root.innerHTML, 'class="stats-drain"'), 0);
+  assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 2);
+  assert.equal(occurrences(root.innerHTML, 'class="stats-remainder"'), 1);
+});
+
+test("updates Health and Attack remainders independently", () => {
+  const fills = {
+    health: { style: {} },
+    attack: { style: {} },
+  };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      if (selector.includes('data-stat="health"')) return fills.health;
+      if (selector.includes('data-stat="attack"')) return fills.attack;
+      return null;
+    },
+  };
+  const panel = createStatsPanel(root);
+  panel.update(createCharacter());
+
+  panel.setRemainder("health", 0.25);
+  panel.setRemainder("attack", 0.7);
+
+  assert.equal(fills.health.style.width, "25%");
+  assert.equal(fills.attack.style.width, "70%");
 });

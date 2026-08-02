@@ -12,6 +12,7 @@ import { createHealthDrain } from "./health-drain.js";
 import { createKeyboardInput } from "./input.js";
 import { createMovement } from "./actions/movement.js";
 import { createActionScheduler } from "./actions/scheduler.js";
+import { createStatWear } from "./stat-wear.js";
 import { createGameTime } from "./time.js";
 
 export function createGame({ canvas, statsRoot, debugControl, config, onFinish }) {
@@ -44,12 +45,16 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
   generateMaze(world, {
     density: config.wallDensity,
     seed: mazeSeed,
+    baseHealth: config.baseWallHealth,
+    defense: config.baseWallDefense,
+    impactWear: config.wallImpactWear,
   });
   placeExit(world, {
     seed: (mazeSeed ^ 0x9e3779b9) >>> 0,
   });
 
   const character = createCharacter({ name: "Sir Roland" });
+  const statWear = createStatWear({ character });
   const statsPanel = createStatsPanel(statsRoot);
   statsPanel.update(character);
 
@@ -64,7 +69,13 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
 
   const input = createKeyboardInput(window);
   const movement = createMovement({ player, cellSize: config.cellSize });
-  const attack = createAttack();
+  let statsDirty = false;
+  const attack = createAttack({
+    world,
+    character,
+    statWear,
+    onStatChange: () => { statsDirty = true; },
+  });
   const adapter = createActionAdapter({
     world,
     player,
@@ -96,12 +107,17 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
   function frame(now) {
     const tick = gameTime.advance(realClock.tick(now));
 
-    if (healthDrain.advance(tick.dt) > 0) statsPanel.update(character);
-    statsPanel.setDrain(healthDrain.remaining); // live 1px drain bar under Health
+    if (healthDrain.advance(tick.dt) > 0) statsDirty = true;
     // Death is terminal at the instant the drain reaches zero. Do not let the
     // same frame spend its action budget and move a dead hero onto the exit.
     const died = character.stats.health <= 0;
     if (!died) scheduler.update(tick.dt);
+    if (statsDirty) {
+      statsPanel.update(character);
+      statsDirty = false;
+    }
+    statsPanel.setRemainder("health", healthDrain.remaining);
+    statsPanel.setRemainder("attack", statWear.remaining("attack"));
     camera.update();
     renderer.render({
       player,

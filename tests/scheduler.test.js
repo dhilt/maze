@@ -4,17 +4,17 @@ import test from "node:test";
 import { createActionScheduler } from "../src/game/scheduler.js";
 
 // A timer-based fake executor (matches the real begin/update contract), so
-// zero-duration resolved actions flush instantly here too.
+// logical time-cost and leftover-unit behavior are exercised here too.
 function makeExecutor() {
   let a = null;
   const log = [];
   return {
     log,
-    begin(resolved) { a = { ...resolved, t: 0 }; log.push(resolved); },
-    update(dt) {
+    begin(resolved) { a = { ...resolved, elapsed: 0 }; log.push(resolved); },
+    update(deltaUnits) {
       if (!a) return 0;
-      a.t += dt;
-      if (a.t >= a.duration) { const l = a.t - a.duration; a = null; return l; }
+      a.elapsed += deltaUnits;
+      if (a.elapsed >= a.timeCost) { const l = a.elapsed - a.timeCost; a = null; return l; }
       return 0;
     },
     get active() { return a !== null; },
@@ -39,9 +39,9 @@ function makeInput() {
   };
 }
 
-const stepOf = (dir) => ({ kind: "step", dx: 0, dy: 0, duration: 0.5, facing: dir });
-const turnOf = (dir) => ({ kind: "turn", dx: 0, dy: 0, duration: 0, facing: dir });
-const attackOf = () => ({ kind: "attack", dx: 0, dy: 0, duration: 0.5, facing: null });
+const stepOf = (dir) => ({ kind: "step", dx: 0, dy: 0, timeCost: 5, facing: dir });
+const turnOf = (dir) => ({ kind: "turn", dx: 0, dy: 0, timeCost: 1, facing: dir });
+const attackOf = () => ({ kind: "attack", dx: 0, dy: 0, timeCost: 5, facing: null });
 
 function resolveByKind(map) {
   return (id) => (id in map ? map[id]() : stepOf(id));
@@ -55,23 +55,27 @@ test("declared actions run in the order pressed", () => {
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
   input.queue("down", "left");
-  scheduler.update(0.5); // down completes, left starts
+  scheduler.update(5); // down completes, left starts
   assert.equal(scheduler.activeId, "left");
   assert.deepEqual(movement.log.map((a) => a.facing), ["down", "left"]);
 });
 
-test("an instant (transformed) action flushes and the next runs the same frame", () => {
+test("a one-unit turn consumes time then carries leftover into the next action", () => {
   const movement = makeExecutor();
   const attack = makeExecutor();
   const input = makeInput();
   const adapter = makeAdapter(resolveByKind({ left: turnOf, attack: attackOf }));
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
-  input.queue("left", "attack"); // left → instant turn, then attack
-  scheduler.update(0.1);
-  assert.equal(scheduler.activeId, "attack"); // turn flushed, attack now running
-  assert.equal(movement.log.length, 1); // the turn
-  assert.equal(attack.log.length, 1); // the attack
+  input.queue("left", "attack");
+  scheduler.update(0.5);
+  assert.equal(scheduler.activeId, "left");
+  assert.equal(attack.log.length, 0);
+
+  scheduler.update(0.75); // turn finishes; 0.25 enters the attack
+  assert.equal(scheduler.activeId, "attack");
+  assert.equal(movement.log.length, 1);
+  assert.equal(attack.log.length, 1);
 });
 
 test("the adapter can cancel a declared action (dropped from the queue)", () => {
@@ -82,9 +86,10 @@ test("the adapter can cancel a declared action (dropped from the queue)", () => 
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
   input.queue("up", "right"); // up cancelled, right runs
-  scheduler.update(0.1);
+  scheduler.update(1);
   assert.equal(scheduler.activeId, "right");
   assert.deepEqual(movement.log.map((a) => a.facing), ["right"]);
+  assert.equal(scheduler.move.elapsed, 1); // cancellation consumed no budget
 });
 
 test("FIFO keeps the first next action; overflow is dropped", () => {
@@ -95,14 +100,14 @@ test("FIFO keeps the first next action; overflow is dropped", () => {
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
   input.queue("right");
-  scheduler.update(0.1); // right running
+  scheduler.update(0.5); // right running
   input.queue("up");
-  scheduler.update(0.1); // up buffered
+  scheduler.update(0.5); // up buffered
   input.queue("attack");
-  scheduler.update(0.1); // queue full → attack dropped
+  scheduler.update(0.5); // queue full → attack dropped
   assert.equal(scheduler.buffered, "up");
 
-  scheduler.update(0.4); // right completes → up runs
+  scheduler.update(3.5); // right completes → up runs
   assert.equal(scheduler.activeId, "up");
   assert.equal(attack.log.length, 0);
 });
@@ -116,7 +121,7 @@ test("a cancelled held direction is adapted once per frame, not spun", () => {
   const adapter = { adapt: () => { calls += 1; return null; } }; // always cancel
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
-  scheduler.update(0.1);
+  scheduler.update(1);
   assert.equal(calls, 1); // was 16 (guard limit) before the fix
   assert.equal(scheduler.activeId, null);
 });
@@ -126,7 +131,7 @@ test("an unknown resolved kind throws instead of silently moving", () => {
   const attack = makeExecutor();
   const input = makeInput();
   input.queue("weird");
-  const adapter = { adapt: () => ({ kind: "teleport", duration: 0.5 }) };
+  const adapter = { adapt: () => ({ kind: "teleport", timeCost: 5 }) };
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
   assert.throws(() => scheduler.update(0.1), /No executor for action kind: teleport/);
@@ -140,7 +145,7 @@ test("a held direction auto-repeats when the queue is empty", () => {
   const adapter = makeAdapter(resolveByKind({}));
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
 
-  scheduler.update(0.5); // held right → step, completes, refills → step again
+  scheduler.update(5); // held right → step, completes, refills → step again
   assert.ok(movement.log.length >= 2);
   assert.equal(movement.log[0].facing, "right");
 });

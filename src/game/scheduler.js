@@ -1,12 +1,12 @@
 // Drives the character through a FIFO queue (max 2) of DESIRED actions. Right
 // before an action runs it goes through the adapter, which resolves it against
 // the live world into a concrete action — possibly transformed (blocked move →
-// instant turn) or cancelled (dropped from the queue).
+// short turn) or cancelled (dropped from the queue).
 //
 // Queue rules: run in order pressed; cap 2 (overflow dropped); no two consecutive
 // equal entries. When idle & empty, a held direction refills it (auto-repeat).
-// Zero-duration (instant) actions flush within the same frame; leftover time
-// carries into the next action to keep motion smooth.
+// Zero-cost actions flush within the same frame; leftover game-time units carry
+// into the next action to keep motion smooth.
 export function createActionScheduler({ adapter, movement, attack, input }) {
   const queue = []; // desired action ids, in order
   let running = null; // the executor advancing queue[0], or null
@@ -42,10 +42,10 @@ export function createActionScheduler({ adapter, movement, attack, input }) {
     return true;
   }
 
-  function update(dt) {
+  function update(deltaUnits) {
     for (const id of input.drainPressed()) enqueue(id);
 
-    let budget = dt;
+    let budget = deltaUnits;
     let heldTried = false; // auto-repeat pulls a held direction at most once/frame
     let guard = 0;
     while (guard++ < 16) {
@@ -68,7 +68,7 @@ export function createActionScheduler({ adapter, movement, attack, input }) {
       const consumed = budget - leftover;
       budget = leftover;
       // A real (time-consuming) action ran: allow one more held refill so held
-      // movement keeps flowing. An instant action (or a cancel) with an empty
+      // movement keeps flowing. A zero-cost action (or a cancel) with an empty
       // queue must stop — otherwise a held direction spins the loop each frame.
       if (consumed > 0) heldTried = false;
       else if (queue.length === 0) break;

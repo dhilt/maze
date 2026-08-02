@@ -1,17 +1,17 @@
 // Executes a concrete attack action produced by the adapter. Mirrors movement's
-// begin()/update() contract (update returns leftover dt on completion).
+// begin()/update() contract in logical game-time units.
 export function createAttack() {
   let state = null;
 
   function begin(resolved) {
-    state = { t: 0, duration: resolved.duration };
+    state = { elapsed: 0, timeCost: resolved.timeCost };
   }
 
-  function update(dt) {
+  function update(deltaUnits) {
     if (!state) return 0;
-    state.t += dt;
-    if (state.t >= state.duration) {
-      const leftover = state.t - state.duration;
+    state.elapsed += deltaUnits;
+    if (state.elapsed >= state.timeCost) {
+      const leftover = state.elapsed - state.timeCost;
       state = null;
       return leftover;
     }

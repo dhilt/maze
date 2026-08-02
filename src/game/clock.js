@@ -1,13 +1,13 @@
-// The single source of time. Everything that lives or animates reads its pace
-// from here instead of touching performance.now directly.
+// The single source of physical time. Nothing else touches performance.now;
+// the game-time layer converts this stream into logical units for simulation.
 //
 // tick(now) returns the shared frame context:
 //   dt   — seconds since the previous tick, clamped (frame-rate independent,
 //          and guarded against tab-refocus jumps / clock skew)
 //   time — total seconds elapsed since the clock started (monotonic)
 //
-// `time` is what enables action-independent animation (idle bob, flicker,
-// ripples) and, later, any number of living objects sharing one timeline.
+// Physical time stays available for presentation-only effects that must ignore
+// game speed; gameplay and ordinary animation use the logical game timeline.
 
 export function createClock({ maxDelta = 0.1 } = {}) {
   let last = null;

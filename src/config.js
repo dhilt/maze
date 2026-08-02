@@ -1,7 +1,7 @@
 const PHASES = 4;
-const ACTION_TIME = 0.5; // base action duration (seconds)
+const SECONDS_PER_TIME_UNIT = 0.1;
 
-export const VERSION = "0.38";
+export const VERSION = "0.41";
 
 export const GAME_CONFIG = Object.freeze({
   cellSize: 64,
@@ -11,14 +11,24 @@ export const GAME_CONFIG = Object.freeze({
   worldRows: 50,
   cameraMargin: 2,
   phases: PHASES,
-  actionTime: ACTION_TIME, // step (cell-crossing) time; also the walk-cycle length
-  // Per-action durations. A declared move is adapted to a step (actionTime) or,
-  // when blocked, to an instant turn (0). Add an action's params here as it joins
-  // the bus.
-  actionDurations: Object.freeze({
-    step: ACTION_TIME,
-    turn: 0,
-    attack: ACTION_TIME,
+  // Physical seconds are converted to logical game-time units before they reach
+  // the action bus. At normal speed 1 unit lasts 100 ms.
+  gameTime: Object.freeze({
+    secondsPerUnit: SECONDS_PER_TIME_UNIT,
+    speed: 1,
+  }),
+  // Integer costs in logical game-time units. A blocked move toward a new facing
+  // resolves to a turn; repeating the current facing is a cancelled no-op.
+  actionCosts: Object.freeze({
+    step: 5,
+    turn: 1,
+    attack: 5,
+  }),
+  // Time-based effects. Health drains by 1 every `drainInterval` game-time units
+  // (real-time — it ticks whether or not the hero is acting). A character may
+  // override this via its own healthDrainInterval.
+  health: Object.freeze({
+    drainInterval: 100,
   }),
   debug: false,
   floorStyle: "crypt",

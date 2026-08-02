@@ -9,7 +9,7 @@ import { drawWalls } from "./walls.js";
 import { TERRAIN, DEFAULT_TERRAIN } from "../world/terrain.js";
 
 // createRenderer(ctx, config) → { render(state) }
-// config: { cellSize, viewCols, viewRows, worldCols, worldRows, phases, cellTime, margin, debug }
+// config: { cellSize, viewCols, viewRows, worldCols, worldRows, phases, margin, debug }
 export function createRenderer(ctx, config) {
   const {
     cellSize: CELL,
@@ -117,7 +117,7 @@ export function createRenderer(ctx, config) {
     let wy = player.row * CELL;
     let frame = 0; // standing pose when idle
     if (move) {
-      const progress = Math.min(move.t / move.duration, 1);
+      const progress = Math.min(move.elapsed / move.timeCost, 1);
       wx += move.dx * CELL * progress;
       wy += move.dy * CELL * progress;
       frame = Math.floor(progress * PHASES) % PHASES;
@@ -128,7 +128,7 @@ export function createRenderer(ctx, config) {
     let img = SPRITES[facing][frame];
     if (attack) {
       const frames = ATTACK_SPRITES[facing];
-      const progress = Math.min(attack.t / attack.duration, 0.999999);
+      const progress = Math.min(attack.elapsed / attack.timeCost, 0.999999);
       img = frames[Math.floor(progress * frames.length)];
     }
     if (img.complete && img.naturalWidth) {

@@ -7,9 +7,11 @@ import { createActionAdapter } from "./actions.js";
 import { createAttack } from "./attack.js";
 import { createCamera } from "./camera.js";
 import { createClock } from "./clock.js";
+import { createHealthDrain } from "./health-drain.js";
 import { createKeyboardInput } from "./input.js";
 import { createMovement } from "./movement.js";
 import { createActionScheduler } from "./scheduler.js";
+import { createGameTime } from "./time.js";
 
 export function createGame({ canvas, statsRoot, debugControl, config }) {
   const ctx = canvas.getContext("2d");
@@ -23,7 +25,6 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     worldCols: config.worldCols,
     worldRows: config.worldRows,
     phases: config.phases,
-    cellTime: config.actionTime,
     margin: config.cameraMargin,
     debug: config.debug,
     floorStyle: config.floorStyle,
@@ -46,6 +47,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
   const player = {
     col: Math.floor(config.worldCols / 2),
     row: Math.floor(config.worldRows / 2),
+    facing: "down",
   };
   const input = createKeyboardInput(window);
   const movement = createMovement({ player, cellSize: config.cellSize });
@@ -53,7 +55,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
   const adapter = createActionAdapter({
     world,
     player,
-    durations: config.actionDurations,
+    costs: config.actionCosts,
   });
   const scheduler = createActionScheduler({ adapter, movement, attack, input });
   const camera = createCamera({
@@ -66,12 +68,18 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     margin: config.cameraMargin,
   });
 
-  const clock = createClock({ maxDelta: 0.1 });
+  const realClock = createClock({ maxDelta: 0.1 });
+  const gameTime = createGameTime(config.gameTime);
+  const healthDrain = createHealthDrain({
+    character,
+    defaultInterval: config.health.drainInterval,
+  });
   let frameId = null;
 
   function frame(now) {
-    const tick = clock.tick(now); // { dt, time } — the shared time stream
+    const tick = gameTime.advance(realClock.tick(now));
 
+    if (healthDrain.advance(tick.dt) > 0) statsPanel.update(character);
     scheduler.update(tick.dt);
     camera.update();
     renderer.render({
@@ -90,7 +98,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
 
   function start() {
     if (frameId !== null) return;
-    clock.reset(performance.now());
+    realClock.reset(performance.now());
     frameId = requestAnimationFrame(frame);
   }
 
@@ -109,6 +117,7 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
       cam: camera.state,
       world,
       character,
+      gameTime: gameTime.time,
     };
   }
 

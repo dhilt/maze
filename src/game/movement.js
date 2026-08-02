@@ -1,26 +1,24 @@
 // Executes a concrete locomotion action produced by the adapter: a step (moves a
-// cell over its duration) or a turn (instant, changes only facing). Does no wall
-// logic itself — it just runs the resolved action.
+// cell over its time cost) or a turn (changes only facing). Does no wall logic
+// itself — it just runs the resolved action in logical game-time units.
 export function createMovement({ player, cellSize }) {
-  let action = null; // resolved action: { kind, dx, dy, duration, facing, t }
-  let facing = "down";
+  let action = null; // resolved action + { elapsed }; all time is in game units
 
   function begin(resolved) {
-    action = { ...resolved, t: 0 };
-    if (resolved.facing) facing = resolved.facing;
+    action = { ...resolved, elapsed: 0 };
+    if (resolved.facing) player.facing = resolved.facing;
   }
 
-  // Advance; returns leftover dt on completion (else 0). A step applies its cell
-  // move when it lands; a turn (duration 0) completes on the first tick.
-  function update(dt) {
+  // Advance by logical units; return leftover units on completion (else 0).
+  function update(deltaUnits) {
     if (!action) return 0;
-    action.t += dt;
-    if (action.t >= action.duration) {
+    action.elapsed += deltaUnits;
+    if (action.elapsed >= action.timeCost) {
       if (action.kind === "step") {
         player.col += action.dx;
         player.row += action.dy;
       }
-      const leftover = action.t - action.duration;
+      const leftover = action.elapsed - action.timeCost;
       action = null;
       return leftover;
     }
@@ -29,7 +27,7 @@ export function createMovement({ player, cellSize }) {
 
   function getPixelPosition() {
     const stepping = action && action.kind === "step";
-    const progress = stepping ? Math.min(action.t / action.duration, 1) : 0;
+    const progress = stepping ? Math.min(action.elapsed / action.timeCost, 1) : 0;
     return {
       x: player.col * cellSize + (stepping ? action.dx * cellSize * progress : 0),
       y: player.row * cellSize + (stepping ? action.dy * cellSize * progress : 0),
@@ -42,6 +40,6 @@ export function createMovement({ player, cellSize }) {
     getPixelPosition,
     get move() { return action && action.kind === "step" ? action : null; },
     get active() { return action !== null; },
-    get facing() { return facing; },
+    get facing() { return player.facing; },
   };
 }

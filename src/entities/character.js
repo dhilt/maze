@@ -14,6 +14,9 @@ export function createCharacter(overrides = {}) {
     defense: 5,
     morale: 8,
     moraleMax: 10,
+    // Game-time units between each -1 health tick. null → use the config default;
+    // a number overrides it; 0 or negative disables the drain for this character.
+    healthDrainInterval: null,
     ...overrides,
   };
 }

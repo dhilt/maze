@@ -1,7 +1,7 @@
 const PHASES = 4;
 const SECONDS_PER_TIME_UNIT = 0.1;
 
-export const VERSION = "0.42";
+export const VERSION = "0.44";
 
 export const GAME_CONFIG = Object.freeze({
   cellSize: 64,
@@ -23,12 +23,6 @@ export const GAME_CONFIG = Object.freeze({
     step: 5,
     turn: 1,
     attack: 5,
-  }),
-  // Time-based effects. Health drains by 1 every `drainInterval` game-time units
-  // (real-time — it ticks whether or not the hero is acting). A character may
-  // override this via its own healthDrainInterval.
-  health: Object.freeze({
-    drainInterval: 100,
   }),
   debug: false,
   floorStyle: "crypt",

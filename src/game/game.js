@@ -70,16 +70,14 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
 
   const realClock = createClock({ maxDelta: 0.1 });
   const gameTime = createGameTime(config.gameTime);
-  const healthDrain = createHealthDrain({
-    character,
-    defaultInterval: config.health.drainInterval,
-  });
+  const healthDrain = createHealthDrain({ character });
   let frameId = null;
 
   function frame(now) {
     const tick = gameTime.advance(realClock.tick(now));
 
     if (healthDrain.advance(tick.dt) > 0) statsPanel.update(character);
+    statsPanel.setDrain(healthDrain.remaining); // live 1px drain bar under Health
     scheduler.update(tick.dt);
     camera.update();
     renderer.render({

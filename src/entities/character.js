@@ -1,33 +1,39 @@
-// Character model — the player's stats as a plain, serialisable state object.
-//
-// createCharacter() returns sensible defaults; pass overrides for any field.
-// The object is intentionally flat data (no methods, JSON-serialisable) so it is
-// trivial to store, pass around, save/load, or hand to the stats panel. Extend by
-// adding a field here and a row in stats-panel.js — nothing else needs to change.
+// Character model — plain, serialisable state kept separate from its helpers.
+
+const DEFAULT_STATS = Object.freeze({
+  health: 20,
+  attack: 7,
+  defense: 5,
+  morale: 8,
+});
+
+const DEFAULT_STATS_MAX = Object.freeze({
+  health: 20,
+  attack: 7,
+  defense: 5,
+  morale: 10,
+});
 
 export function createCharacter(overrides = {}) {
+  const { stats = {}, statsMax = {}, ...characterOverrides } = overrides;
+
   return {
     name: "Sir Roland",
-    health: 20,
-    healthMax: 20,
-    attack: 7,
-    defense: 5,
-    morale: 8,
-    moraleMax: 10,
-    // Game-time units between each -1 health tick. null → use the config default;
-    // a number overrides it; 0 or negative disables the drain for this character.
-    healthDrainInterval: null,
-    ...overrides,
+    stats: { ...DEFAULT_STATS, ...stats },
+    statsMax: { ...DEFAULT_STATS_MAX, ...statsMax },
+    // Game-time units per -1 health tick. 0 or negative disables the drain.
+    healthDrainSpeed: 100,
+    ...characterOverrides,
   };
 }
 
 // Small helpers keep mutations clamped without turning the state into a class.
 export function damage(ch, amount) {
-  ch.health = Math.max(0, ch.health - amount);
+  ch.stats.health = Math.max(0, ch.stats.health - amount);
   return ch;
 }
 
 export function heal(ch, amount) {
-  ch.health = Math.min(ch.healthMax, ch.health + amount);
+  ch.stats.health = Math.min(ch.statsMax.health, ch.stats.health + amount);
   return ch;
 }

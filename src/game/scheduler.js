@@ -1,63 +1,78 @@
-const ATTACK = "attack";
-
-// Drives the character through a FIFO action queue of at most 2 entries:
-//   queue[0] — the action currently executing (locked for its actionTime)
-//   queue[1] — one buffered "next" action, which must differ from queue[0]
+// Drives the character through a FIFO queue (max 2) of DESIRED actions. Right
+// before an action runs it goes through the adapter, which resolves it against
+// the live world into a concrete action — possibly transformed (blocked move →
+// instant turn) or cancelled (dropped from the queue).
 //
-// Rules:
-//   * Actions run in the order pressed.
-//   * The queue is capped at 2; presses that overflow it are dropped (so a fast
-//     "down, left, attack" runs "down, left" and drops the extra attack).
-//   * No two consecutive-equal entries (no double-step / double-attack).
-//   * When the queue drains, a held direction refills it (auto-repeat). Leftover
-//     time carries into the next action so motion stays smooth.
-export function createActionScheduler({ movement, attack, input }) {
-  const queue = []; // action ids, in order; queue[0] is (or will be) executing
-  let running = false; // whether queue[0] has been started on its executor
+// Queue rules: run in order pressed; cap 2 (overflow dropped); no two consecutive
+// equal entries. When idle & empty, a held direction refills it (auto-repeat).
+// Zero-duration (instant) actions flush within the same frame; leftover time
+// carries into the next action to keep motion smooth.
+export function createActionScheduler({ adapter, movement, attack, input }) {
+  const queue = []; // desired action ids, in order
+  let running = null; // the executor advancing queue[0], or null
+
+  // Registry of executors by resolved-action kind. Adding an action kind means
+  // adding an entry here; an unknown kind is a bug, so fail loudly.
+  const executors = { step: movement, turn: movement, attack };
 
   function enqueue(id) {
-    if (queue.length >= 2) return; // cap at 2
+    if (queue.length >= 2) return;
     const last = queue.length ? queue[queue.length - 1] : null;
-    if (id === last) return; // no consecutive duplicate (2nd must differ from 1st)
+    if (id === last) return;
     queue.push(id);
   }
 
-  function executor() {
-    return queue[0] === ATTACK ? attack : movement;
+  function executorFor(kind) {
+    const executor = executors[kind];
+    if (!executor) throw new Error(`No executor for action kind: ${kind}`);
+    return executor;
   }
 
-  // Advance the head; on completion pop it and return leftover dt, else 0.
-  function step(dt) {
-    const exec = executor();
-    const leftover = exec.update(dt);
-    if (!exec.active) {
+  // Resolve queue[0] and start it. Returns false if the adapter cancelled it
+  // (dropped) so the caller can try the next head.
+  function startHead() {
+    const resolved = adapter.adapt(queue[0]);
+    if (resolved === null) {
       queue.shift();
-      running = false;
-      return leftover;
+      running = null;
+      return false;
     }
-    return 0;
-  }
-
-  function startHead(carryDt) {
-    const id = queue[0];
-    if (id === ATTACK) attack.start();
-    else movement.start(id);
-    running = true;
-    if (carryDt > 0) step(carryDt);
+    running = executorFor(resolved.kind);
+    running.begin(resolved);
+    return true;
   }
 
   function update(dt) {
     for (const id of input.drainPressed()) enqueue(id);
 
-    let carry = 0;
-    if (running) carry = step(dt);
+    let budget = dt;
+    let heldTried = false; // auto-repeat pulls a held direction at most once/frame
+    let guard = 0;
+    while (guard++ < 16) {
+      if (!running) {
+        if (queue.length === 0) {
+          if (heldTried) break; // already resolved the held direction this frame
+          const held = input.heldDirection();
+          if (held === null) break;
+          enqueue(held);
+          heldTried = true;
+        }
+        if (!startHead()) continue; // cancelled → try the next head
+      }
 
-    if (queue.length === 0) {
-      const held = input.heldDirection();
-      if (held !== null) enqueue(held);
+      const leftover = running.update(budget);
+      if (running.active) break; // still running this frame
+
+      queue.shift();
+      running = null;
+      const consumed = budget - leftover;
+      budget = leftover;
+      // A real (time-consuming) action ran: allow one more held refill so held
+      // movement keeps flowing. An instant action (or a cancel) with an empty
+      // queue must stop — otherwise a held direction spins the loop each frame.
+      if (consumed > 0) heldTried = false;
+      else if (queue.length === 0) break;
     }
-
-    if (queue.length > 0 && !running) startHead(carry);
   }
 
   return {
@@ -65,7 +80,8 @@ export function createActionScheduler({ movement, attack, input }) {
     get facing() { return movement.facing; },
     get move() { return movement.move; },
     get attackState() { return attack.state; },
-    get activeId() { return queue.length ? queue[0] : null; },
+    getPixelPosition() { return movement.getPixelPosition(); },
+    get activeId() { return running ? queue[0] : null; },
     get buffered() { return queue.length > 1 ? queue[1] : null; },
   };
 }

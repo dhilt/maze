@@ -3,6 +3,7 @@ import { createRenderer } from "../rendering/renderer.js";
 import { createStatsPanel } from "../ui/stats-panel.js";
 import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
+import { createActionAdapter } from "./actions.js";
 import { createAttack } from "./attack.js";
 import { createCamera } from "./camera.js";
 import { createClock } from "./clock.js";
@@ -47,14 +48,14 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     row: Math.floor(config.worldRows / 2),
   };
   const input = createKeyboardInput(window);
-  const movement = createMovement({
+  const movement = createMovement({ player, cellSize: config.cellSize });
+  const attack = createAttack();
+  const adapter = createActionAdapter({
     world,
     player,
-    cellSize: config.cellSize,
-    actionTime: config.actionTime,
+    durations: config.actionDurations,
   });
-  const attack = createAttack({ duration: config.actionTime });
-  const scheduler = createActionScheduler({ movement, attack, input });
+  const scheduler = createActionScheduler({ adapter, movement, attack, input });
   const camera = createCamera({
     player,
     movement,

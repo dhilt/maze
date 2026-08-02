@@ -15,7 +15,7 @@ export function createRenderer(ctx, config) {
     cellSize: CELL,
     viewCols: VC, viewRows: VR,
     worldCols: WC, worldRows: WR,
-    phases: PHASES, cellTime: CELL_TIME,
+    phases: PHASES,
     margin: MARGIN, debug,
     floorStyle = "crypt",
   } = config;
@@ -117,7 +117,7 @@ export function createRenderer(ctx, config) {
     let wy = player.row * CELL;
     let frame = 0; // standing pose when idle
     if (move) {
-      const progress = Math.min(move.t / CELL_TIME, 1);
+      const progress = Math.min(move.t / move.duration, 1);
       wx += move.dx * CELL * progress;
       wy += move.dy * CELL * progress;
       frame = Math.floor(progress * PHASES) % PHASES;

@@ -1,10 +1,10 @@
-// Executes one attack at a time. Started by the scheduler; mirrors movement's
-// update() contract (returns leftover dt on completion) so actions chain smoothly.
-export function createAttack({ duration }) {
+// Executes a concrete attack action produced by the adapter. Mirrors movement's
+// begin()/update() contract (update returns leftover dt on completion).
+export function createAttack() {
   let state = null;
 
-  function start() {
-    state = { t: 0, duration };
+  function begin(resolved) {
+    state = { t: 0, duration: resolved.duration };
   }
 
   function update(dt) {
@@ -19,7 +19,7 @@ export function createAttack({ duration }) {
   }
 
   return {
-    start,
+    begin,
     update,
     get active() { return state !== null; },
     get state() { return state; },

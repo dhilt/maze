@@ -7,7 +7,7 @@
 // equal entries. When idle & empty, a held direction refills it (auto-repeat).
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
-export function createActionScheduler({ adapter, movement, attack, input }) {
+export function createActionScheduler({ adapter, movement, attack, input, onStep }) {
   const queue = []; // desired action ids, in order
   let running = null; // the executor advancing queue[0], or null
 
@@ -65,6 +65,10 @@ export function createActionScheduler({ adapter, movement, attack, input }) {
 
       queue.shift();
       running = null;
+      // Check for a terminal condition (e.g. the exit reached) the instant the
+      // action lands — before leftover time can carry into the next action and
+      // step the player past it.
+      if (onStep && onStep()) break;
       const consumed = budget - leftover;
       budget = leftover;
       // A real (time-consuming) action ran: allow one more held refill so held

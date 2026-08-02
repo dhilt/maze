@@ -149,3 +149,23 @@ test("a held direction auto-repeats when the queue is empty", () => {
   assert.ok(movement.log.length >= 2);
   assert.equal(movement.log[0].facing, "right");
 });
+
+test("onStep halts the loop the instant a step lands (no time-carry overshoot)", () => {
+  const runSteps = (onStep) => {
+    const movement = makeExecutor();
+    const input = makeInput();
+    input.queue("right", "up");
+    const scheduler = createActionScheduler({
+      adapter: makeAdapter(resolveByKind({})),
+      movement,
+      attack: makeExecutor(),
+      input,
+      onStep,
+    });
+    scheduler.update(100); // budget large enough to finish both steps in one call
+    return movement.log.length;
+  };
+
+  assert.equal(runSteps(null), 2); // no hook → leftover carries, both steps run
+  assert.equal(runSteps(() => true), 1); // hook halts right after the first lands
+});

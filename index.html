@@ -9,9 +9,16 @@
 </head>
 
 <body>
-  <h1>Maze Wanderer</h1>
   <div id="stage">
-    <canvas id="game" width="640" height="480"></canvas>
+    <div id="viewport">
+      <canvas id="game" width="640" height="480"></canvas>
+      <div id="completion" hidden>
+        <div class="completion-card">
+          <p class="completion-title">You escaped the maze</p>
+          <button id="restart" type="button">Play again</button>
+        </div>
+      </div>
+    </div>
     <aside id="stats"></aside>
   </div>
   <div id="hint">Arrows / WASD — move · Space — attack</div>

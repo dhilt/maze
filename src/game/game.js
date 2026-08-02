@@ -14,7 +14,7 @@ import { createMovement } from "./movement.js";
 import { createActionScheduler } from "./scheduler.js";
 import { createGameTime } from "./time.js";
 
-export function createGame({ canvas, statsRoot, debugControl, config }) {
+export function createGame({ canvas, statsRoot, debugControl, config, onFinish }) {
   const ctx = canvas.getContext("2d");
   canvas.width = config.viewCols * config.cellSize;
   canvas.height = config.viewRows * config.cellSize;
@@ -58,6 +58,10 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     row: spawn.y,
     facing: "down",
   };
+  // True when the hero stands on the exit cell. Used as the scheduler's per-step
+  // hook (so a fast frame can't overshoot the exit) and at end of frame.
+  const reachedExit = () => Boolean(world.at(player.col, player.row)?.exit);
+
   const input = createKeyboardInput(window);
   const movement = createMovement({ player, cellSize: config.cellSize });
   const attack = createAttack();
@@ -66,7 +70,13 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     player,
     costs: config.actionCosts,
   });
-  const scheduler = createActionScheduler({ adapter, movement, attack, input });
+  const scheduler = createActionScheduler({
+    adapter,
+    movement,
+    attack,
+    input,
+    onStep: reachedExit,
+  });
   const camera = createCamera({
     player,
     movement,
@@ -81,13 +91,17 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
   const gameTime = createGameTime(config.gameTime);
   const healthDrain = createHealthDrain({ character });
   let frameId = null;
+  let finished = false;
 
   function frame(now) {
     const tick = gameTime.advance(realClock.tick(now));
 
     if (healthDrain.advance(tick.dt) > 0) statsPanel.update(character);
     statsPanel.setDrain(healthDrain.remaining); // live 1px drain bar under Health
-    scheduler.update(tick.dt);
+    // Death is terminal at the instant the drain reaches zero. Do not let the
+    // same frame spend its action budget and move a dead hero onto the exit.
+    const died = character.stats.health <= 0;
+    if (!died) scheduler.update(tick.dt);
     camera.update();
     renderer.render({
       player,
@@ -100,11 +114,22 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
       debug: debugControl?.checked ?? config.debug,
       floorStyle: config.floorStyle,
     });
+
+    // Draw the final state first, then finish. Death takes priority over an exit
+    // when both conditions are present in the same frame.
+    if (died) {
+      finish("died");
+      return;
+    }
+    if (reachedExit()) {
+      finish("escaped");
+      return;
+    }
     frameId = requestAnimationFrame(frame);
   }
 
   function start() {
-    if (frameId !== null) return;
+    if (finished || frameId !== null) return;
     realClock.reset(performance.now());
     frameId = requestAnimationFrame(frame);
   }
@@ -113,6 +138,15 @@ export function createGame({ canvas, statsRoot, debugControl, config }) {
     if (frameId !== null) cancelAnimationFrame(frameId);
     frameId = null;
     input.destroy();
+  }
+
+  // Terminal transition: tear the loop down cleanly (loop cancelled, frameId
+  // cleared, input released) so the lifecycle is consistent, then notify.
+  function finish(outcome) {
+    if (finished) return;
+    finished = true;
+    stop();
+    onFinish?.(outcome);
   }
 
   function getState() {

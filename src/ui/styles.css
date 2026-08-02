@@ -35,11 +35,67 @@ h1 {
   align-items: stretch;
 }
 
+#viewport {
+  position: relative;
+  align-self: start;
+  line-height: 0;
+}
+
 canvas {
   background: var(--surface);
   border-radius: 12px;
   box-shadow: var(--shadow);
   touch-action: none;
+}
+
+/* Game over: the viewport dims and the completion text sits over it — a popup
+   feel without a popup box. */
+#game.is-dimmed {
+  opacity: 0.28;
+  transition: opacity 0.4s ease;
+}
+
+#completion {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+}
+
+#completion[hidden] {
+  display: none;
+}
+
+.completion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.completion-title {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+
+#restart {
+  padding: 10px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  background: rgba(123, 216, 208, 0.16);
+  border: 1px solid rgba(123, 216, 208, 0.5);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#restart:hover {
+  background: rgba(123, 216, 208, 0.26);
 }
 
 #stats {

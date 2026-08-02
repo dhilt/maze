@@ -1,7 +1,19 @@
-const PHASES = 4;
-const SECONDS_PER_TIME_UNIT = 0.1;
+export const VERSION = "0.48";
 
-export const VERSION = "0.47";
+// Physical seconds are converted to logical game-time units before they reach
+// the action bus. At normal speed 1 unit lasts 100 ms.
+const GAME_TIME = Object.freeze({
+  secondsPerUnit: 0.1,
+  speed: 1,
+});
+
+// Integer costs in logical game-time units. A blocked move toward a new facing
+// resolves to a turn; repeating the current facing is a cancelled no-op.
+const ACTION_COSTS = Object.freeze({
+  step: 5,
+  turn: 1,
+  attack: 5,
+});
 
 export const GAME_CONFIG = Object.freeze({
   cellSize: 64,
@@ -10,20 +22,9 @@ export const GAME_CONFIG = Object.freeze({
   worldCols: 50,
   worldRows: 50,
   cameraMargin: 2,
-  phases: PHASES,
-  // Physical seconds are converted to logical game-time units before they reach
-  // the action bus. At normal speed 1 unit lasts 100 ms.
-  gameTime: Object.freeze({
-    secondsPerUnit: SECONDS_PER_TIME_UNIT,
-    speed: 1,
-  }),
-  // Integer costs in logical game-time units. A blocked move toward a new facing
-  // resolves to a turn; repeating the current facing is a cancelled no-op.
-  actionCosts: Object.freeze({
-    step: 5,
-    turn: 1,
-    attack: 5,
-  }),
+  phases: 4,
+  gameTime: GAME_TIME,
+  actionCosts: ACTION_COSTS,
   debug: false,
   floorStyle: "crypt",
   worldSeed: 1,

@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createCharacter } from "../src/entities/character.js";
-import { createMeatMonster } from "../src/entities/meat-monster.js";
+import {
+  createMeatMonster,
+  MEAT_MONSTER_IMPACT_WEAR,
+} from "../src/entities/meat-monster.js";
 import { createCombat } from "../src/game/combat.js";
+import { createStatWear } from "../src/game/stat-wear.js";
 
 function monsterAt({ id = "monster-1", health = 20, attack = 7, defense = 5 } = {}) {
   const monster = createMeatMonster({ id, col: 1, row: 0, facing: "left" });
@@ -141,4 +145,35 @@ test("a cell attack hits a one-sided moving target that enters its active window
   assert.equal(character.stats.health, 20, "a hit does not create an automatic counterattack");
   assert.equal(strike.hitResolved, true);
   assert.equal(result.impacts.length, 1);
+});
+
+test("successful entity hits lightly wear the hero's Attack while misses do not", () => {
+  const { player, character, monster, monsters } = duel();
+  const statWear = createStatWear({ character });
+  const statChanges = [];
+  const combat = createCombat({
+    player,
+    character,
+    monsters,
+    statWear,
+    onPlayerStatChange: (change) => statChanges.push(change),
+  });
+
+  assert.equal(MEAT_MONSTER_IMPACT_WEAR, 0.05);
+  monster.col = 2;
+  combat.queueImpact(heroHit());
+  combat.resolve();
+  assert.equal(statWear.remaining("attack"), 1, "an empty target cell causes no wear");
+
+  monster.col = 1;
+  combat.queueImpact(heroHit());
+  combat.resolve();
+  assert.equal(statWear.remaining("attack"), 0.99);
+  assert.equal(character.stats.attack, 7);
+
+  statWear.apply("attack", 98);
+  combat.queueImpact(heroHit());
+  combat.resolve();
+  assert.equal(character.stats.attack, 6);
+  assert.deepEqual(statChanges, [{ stat: "attack", lost: 1, remaining: 1 }]);
 });

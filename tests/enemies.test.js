@@ -5,6 +5,7 @@ import {
   createMeatMonster,
   createMeatMonsterStats,
   MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
+  MEAT_MONSTER_IMPACT_WEAR,
   MEAT_MONSTER_MAX_MORALE_COST,
   MEAT_MONSTER_MAX_NUTRITION,
   MEAT_MONSTER_MAX_STATS,
@@ -63,6 +64,7 @@ test("every meat monster owns independent current and maximum stats", () => {
   assert.notEqual(first.stats, second.stats);
   assert.equal(first.nutrition, 6);
   assert.equal(first.moraleCost, 2);
+  assert.equal(first.impactWear, MEAT_MONSTER_IMPACT_WEAR);
   first.stats.health = 0;
   assert.equal(first.statsMax.health, 20);
   assert.equal(second.stats.health, 20);

@@ -1,4 +1,4 @@
-import { resolveDamage } from "./actions/impact.js";
+import { resolveDamage, resolveImpact } from "./actions/impact.js";
 
 const SAME_TIME_EPSILON = 1e-9;
 
@@ -13,7 +13,9 @@ export function createCombat({
   character,
   monsters,
   getPlayerMove = () => null,
+  statWear,
   onPlayerDamage,
+  onPlayerStatChange,
   onMonsterDeath,
 }) {
   let queued = [];
@@ -86,19 +88,34 @@ export function createCombat({
       if (!isAlive(target)) continue;
       if (!occupiesCell(target, event.targetCell)) continue;
 
+      const impact = attacker.ref.type === "player"
+        ? resolveImpact({
+            power: attacker.stats.attack,
+            defense: target.stats.defense,
+            impactWear: target.key.impactWear ?? 0,
+          })
+        : {
+            damage: resolveDamage({
+              power: attacker.stats.attack,
+              defense: target.stats.defense,
+            }),
+            statWear: 0,
+          };
       pending.push({
         event,
         target,
-        damage: resolveDamage({
-          power: attacker.stats.attack,
-          defense: target.stats.defense,
-        }),
+        damage: impact.damage,
+        attackWear: impact.statWear,
       });
     }
 
     const totals = new Map();
     for (const hit of pending) {
       if (hit.event.strike) hit.event.strike.hitResolved = true;
+      if (hit.attackWear > 0 && statWear) {
+        const wear = statWear.apply("attack", hit.attackWear);
+        if (wear.lost > 0) onPlayerStatChange?.(wear);
+      }
       const total = totals.get(hit.target.key) ?? { target: hit.target, damage: 0 };
       total.damage += hit.damage;
       totals.set(hit.target.key, total);

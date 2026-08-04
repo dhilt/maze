@@ -6,6 +6,7 @@ export const MEAT_MONSTER_MIN_NUTRITION = 4;
 export const MEAT_MONSTER_MAX_NUTRITION = 7;
 export const MEAT_MONSTER_MIN_MORALE_COST = 1;
 export const MEAT_MONSTER_MAX_MORALE_COST = 3;
+export const MEAT_MONSTER_IMPACT_WEAR = 0.05;
 
 export const MEAT_MONSTER_MIN_STATS = Object.freeze({
   health: 17,
@@ -79,7 +80,7 @@ export function createMeatMonster({
       MEAT_MONSTER_MAX_MORALE_COST,
       "morale cost",
     ),
-    // During a step col/row remain the source; move reserves the destination.
+    impactWear: MEAT_MONSTER_IMPACT_WEAR,
     move: null,
     attack: null,
   };

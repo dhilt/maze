@@ -86,7 +86,9 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     character,
     monsters,
     getPlayerMove: () => movement.move,
+    statWear,
     onPlayerDamage: () => { statsDirty = true; },
+    onPlayerStatChange: () => { statsDirty = true; },
     onMonsterDeath: (monster) => placeCorpse(world, monster),
   });
   const enemies = createEnemySystem({

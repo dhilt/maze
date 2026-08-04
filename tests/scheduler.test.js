@@ -35,7 +35,7 @@ function makeInput() {
     _held: null,
     queue(...ids) { presses.push(...ids); },
     drainPressed() { const out = presses.slice(); presses.length = 0; return out; },
-    heldDirection() { return this._held; },
+    heldAction() { return this._held; },
   };
 }
 
@@ -187,6 +187,28 @@ test("a held direction auto-repeats when the queue is empty", () => {
   scheduler.update(5); // held right → step, completes, refills → step again
   assert.ok(movement.log.length >= 2);
   assert.equal(movement.log[0].facing, "right");
+});
+
+test("a held attack auto-repeats and release does not cancel the active strike", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  input._held = "attack";
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ attack: attackOf })),
+    movement,
+    attack,
+    input,
+  });
+
+  scheduler.update(5); // first attack lands; held Space starts the next one
+  assert.equal(attack.log.length, 2);
+  assert.equal(scheduler.activeId, "attack");
+
+  input._held = null;
+  scheduler.update(5); // second attack lands, but no third attack starts
+  assert.equal(attack.log.length, 2);
+  assert.equal(scheduler.activeId, null);
 });
 
 test("onStep halts the loop the instant a step lands (no time-carry overshoot)", () => {

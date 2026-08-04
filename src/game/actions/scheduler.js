@@ -6,7 +6,7 @@
 // Queue rules: run in order pressed; cap 2 (overflow dropped); no two consecutive
 // equal directions. A discrete attack may buffer another attack so repeated
 // strikes do not require frame-perfect input. When idle & empty, a held
-// direction refills it (auto-repeat).
+// direction or attack refills it (auto-repeat).
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
 export function createActionScheduler({ adapter, movement, attack, input, onStep }) {
@@ -48,13 +48,13 @@ export function createActionScheduler({ adapter, movement, attack, input, onStep
     for (const id of input.drainPressed()) enqueue(id);
 
     let budget = deltaUnits;
-    let heldTried = false; // auto-repeat pulls a held direction at most once/frame
+    let heldTried = false; // auto-repeat pulls a held action at most once/frame
     let guard = 0;
     while (guard++ < 16) {
       if (!running) {
         if (queue.length === 0) {
-          if (heldTried) break; // already resolved the held direction this frame
-          const held = input.heldDirection();
+          if (heldTried) break; // already resolved the held action this frame
+          const held = input.heldAction();
           if (held === null) break;
           enqueue(held);
           heldTried = true;
@@ -74,8 +74,8 @@ export function createActionScheduler({ adapter, movement, attack, input, onStep
       const consumed = budget - leftover;
       budget = leftover;
       // A real (time-consuming) action ran: allow one more held refill so held
-      // movement keeps flowing. A zero-cost action (or a cancel) with an empty
-      // queue must stop — otherwise a held direction spins the loop each frame.
+      // movement and attacks keep flowing. A zero-cost action with an empty
+      // queue must stop — otherwise a held action spins the loop each frame.
       if (consumed > 0) heldTried = false;
       else if (queue.length === 0) break;
     }

@@ -43,6 +43,22 @@ test("discrete presses drain once; repeats are ignored", () => {
   input.destroy();
 });
 
+test("Space is exposed as a held attack until released", () => {
+  const target = createTarget();
+  const input = createKeyboardInput(target);
+
+  target.dispatch("keydown", { code: "ArrowRight" });
+  target.dispatch("keydown", { code: "Space" });
+  assert.equal(input.heldAction(), "attack");
+
+  target.dispatch("keyup", { code: "Space" });
+  assert.equal(input.heldAction(), "right");
+
+  target.dispatch("keyup", { code: "ArrowRight" });
+  assert.equal(input.heldAction(), null);
+  input.destroy();
+});
+
 test("losing focus clears held keys and pending presses", () => {
   const target = createTarget();
   const input = createKeyboardInput(target);
@@ -52,6 +68,7 @@ test("losing focus clears held keys and pending presses", () => {
   target.dispatch("blur");
 
   assert.equal(input.heldDirection(), null);
+  assert.equal(input.heldAction(), null);
   assert.deepEqual(input.drainPressed(), []);
   input.destroy();
 });

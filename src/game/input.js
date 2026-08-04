@@ -9,7 +9,7 @@ const KEY_MAP = Object.freeze({
   KeyD: "right",
 });
 
-// Low-level input: exposes the held direction (for auto-repeat while a key is
+// Low-level input: exposes the held action (for auto-repeat while a key is
 // down) and the stream of discrete presses (for the action buffer). It carries
 // no notion of the current action — the scheduler applies the buffering rules.
 export function createKeyboardInput(target = window) {
@@ -19,6 +19,7 @@ export function createKeyboardInput(target = window) {
 
   function onKeyDown(event) {
     if (event.code === "Space") {
+      keys.attack = true;
       if (!event.repeat) pressed.push("attack");
       event.preventDefault();
       return;
@@ -32,6 +33,11 @@ export function createKeyboardInput(target = window) {
   }
 
   function onKeyUp(event) {
+    if (event.code === "Space") {
+      keys.attack = false;
+      event.preventDefault();
+      return;
+    }
     const action = KEY_MAP[event.code];
     if (!action) return;
     keys[action] = false;
@@ -40,6 +46,7 @@ export function createKeyboardInput(target = window) {
 
   function clear() {
     for (const action of Object.values(KEY_MAP)) keys[action] = false;
+    keys.attack = false;
     pressed.length = 0;
   }
 
@@ -54,6 +61,11 @@ export function createKeyboardInput(target = window) {
     if (dx !== 0) return dx > 0 ? "right" : "left";
     if (dy !== 0) return dy > 0 ? "down" : "up";
     return null;
+  }
+
+  // Attack takes priority while Space and a direction are held together.
+  function heldAction() {
+    return keys.attack ? "attack" : heldDirection();
   }
 
   // Take the discrete presses recorded since the previous call.
@@ -73,5 +85,5 @@ export function createKeyboardInput(target = window) {
   target.addEventListener("keyup", onKeyUp);
   target.addEventListener("blur", clear);
 
-  return { heldDirection, drainPressed, destroy };
+  return { heldAction, heldDirection, drainPressed, destroy };
 }

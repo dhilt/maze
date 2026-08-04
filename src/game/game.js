@@ -26,7 +26,6 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     viewRows: config.viewRows,
     worldCols: config.worldCols,
     worldRows: config.worldRows,
-    phases: config.phases,
     margin: config.cameraMargin,
     debug: config.debug,
     floorStyle: config.floorStyle,
@@ -53,7 +52,7 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     seed: (mazeSeed ^ 0x9e3779b9) >>> 0,
   });
 
-  const character = createCharacter({ name: "Sir Roland" });
+  const character = createCharacter({ name: "Hero" });
   const statWear = createStatWear({ character });
   const statsPanel = createStatsPanel(statsRoot);
   statsPanel.update(character);

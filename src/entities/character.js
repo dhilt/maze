@@ -18,7 +18,7 @@ export function createCharacter(overrides = {}) {
   const { stats = {}, statsMax = {}, ...characterOverrides } = overrides;
 
   return {
-    name: "Sir Roland",
+    name: "Hero",
     stats: { ...DEFAULT_STATS, ...stats },
     statsMax: { ...DEFAULT_STATS_MAX, ...statsMax },
     // Game-time units per -1 health tick. 0 or negative disables the drain.

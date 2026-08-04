@@ -6,7 +6,7 @@ import { createCharacter, damage, heal } from "../src/entities/character.js";
 test("creates a character with nested current and maximum stats", () => {
   const character = createCharacter();
 
-  assert.equal(character.name, "Sir Roland");
+  assert.equal(character.name, "Hero");
   assert.deepEqual(character.stats, {
     health: 20,
     attack: 7,

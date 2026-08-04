@@ -3,25 +3,27 @@
 // plus debug helpers (cell numbers, static-viewport outline).
 // Gets its sprites from the character renderer; gets plain state + camera from the game loop.
 
-import { buildAttackSprites, buildSprites } from "./character/knight-sprites.js";
+import {
+  KNIGHT_IDLE_FRAME_UNITS,
+  loadKnightSprites,
+  selectAttackFrame,
+} from "./character/knight-sprites.js";
 import { drawExits } from "./exits.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
 import { drawObjects } from "./objects/index.js";
 import { drawWalls } from "./walls.js";
 
 // createRenderer(ctx, config) → { render(state) }
-// config: { cellSize, viewCols, viewRows, worldCols, worldRows, phases, margin, debug }
+// config: { cellSize, viewCols, viewRows, worldCols, worldRows, margin, debug }
 export function createRenderer(ctx, config) {
   const {
     cellSize: CELL,
     viewCols: VC, viewRows: VR,
-    phases: PHASES,
     debug,
     floorStyle = "crypt",
   } = config;
 
-  const SPRITES = buildSprites();
-  const ATTACK_SPRITES = buildAttackSprites();
+  const KNIGHT_SPRITES = loadKnightSprites();
   const W = VC * CELL;
   const H = VR * CELL;
   const numFont = `${Math.round(CELL * 0.17)}px system-ui, sans-serif`;
@@ -98,31 +100,34 @@ export function createRenderer(ctx, config) {
 
   }
 
-  function drawPlayer({ player, move, attack, facing }, cam) {
+  function drawPlayer({ player, move, attack, facing, tick }, cam) {
     let wx = player.col * CELL;
     let wy = player.row * CELL;
-    let frame = 0; // standing pose when idle
     if (move) {
       const progress = Math.min(move.elapsed / move.timeCost, 1);
       wx += move.dx * CELL * progress;
       wy += move.dy * CELL * progress;
-      frame = Math.floor(progress * PHASES) % PHASES;
     }
     const sx = wx - cam.px;
     const sy = wy - cam.py;
 
-    let img = SPRITES[facing][frame];
-    if (attack) {
-      const frames = ATTACK_SPRITES[facing];
-      const progress = Math.min(attack.elapsed / attack.timeCost, 0.999999);
+    const idleTime = Number.isFinite(tick?.time) ? tick.time : 0;
+    const idleFrames = KNIGHT_SPRITES.idle[facing];
+    let img = idleFrames[
+      Math.floor(idleTime / KNIGHT_IDLE_FRAME_UNITS) % idleFrames.length
+    ];
+    if (move) {
+      const frames = KNIGHT_SPRITES.walk[facing];
+      const progress = Math.min(move.elapsed / move.timeCost, 0.999999);
       img = frames[Math.floor(progress * frames.length)];
+    }
+    if (attack) {
+      const frames = KNIGHT_SPRITES.attack[facing];
+      const progress = Math.min(attack.elapsed / attack.timeCost, 0.999999);
+      img = frames[selectAttackFrame(progress, frames.length)];
     }
     if (img.complete && img.naturalWidth) {
       ctx.drawImage(img, sx, sy, CELL, CELL);
-    } else {
-      const inset = 3;
-      ctx.fillStyle = "#4ade80";
-      ctx.fillRect(sx + inset, sy + inset, CELL - inset * 2, CELL - inset * 2);
     }
   }
 

@@ -55,7 +55,15 @@ function valueRow(label, value) {
 
 export function createStatsPanel(root) {
   let current = null;
+  let debugVisible = null;
   const remainderFills = new Map();
+
+  function setDebug(enabled) {
+    const visible = Boolean(enabled);
+    if (visible === debugVisible) return;
+    debugVisible = visible;
+    root.classList?.toggle("is-debug", visible);
+  }
 
   function update(ch) {
     current = ch;
@@ -94,5 +102,5 @@ export function createStatsPanel(root) {
     fill.style.background = barColor(frac);
   }
 
-  return { update, setRemainder };
+  return { update, setRemainder, setDebug };
 }

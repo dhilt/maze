@@ -60,6 +60,7 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
   const statWear = createStatWear({ character });
   const statsPanel = createStatsPanel(statsRoot);
   statsPanel.update(character);
+  statsPanel.setDebug(debugControl?.checked ?? config.debug);
 
   const player = {
     col: spawn.x,
@@ -145,6 +146,8 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
 
   function frame(now) {
     const tick = gameTime.advance(realClock.tick(now));
+    const debug = debugControl?.checked ?? config.debug;
+    statsPanel.setDebug(debug);
 
     if (healthDrain.advance(tick.dt) > 0) statsDirty = true;
     // Death is terminal at the instant the drain reaches zero. Do not let the
@@ -172,7 +175,7 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
       world,
       monsters,
       tick,
-      debug: debugControl?.checked ?? config.debug,
+      debug,
       floorStyle: config.floorStyle,
     });
 

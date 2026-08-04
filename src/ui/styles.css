@@ -137,8 +137,13 @@ canvas {
 }
 
 .stats-value {
+  display: none;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+}
+
+#stats.is-debug .stats-value {
+  display: inline;
 }
 
 .stats-bar {

@@ -2,6 +2,10 @@ const FACINGS = new Set(["up", "down", "left", "right"]);
 
 export const MEAT_MONSTER_KIND = "meat-monster";
 export const MEAT_MONSTER_DIRECTION_CHANGE_CHANCE = 0.2;
+export const MEAT_MONSTER_MIN_NUTRITION = 4;
+export const MEAT_MONSTER_MAX_NUTRITION = 7;
+export const MEAT_MONSTER_MIN_MORALE_COST = 1;
+export const MEAT_MONSTER_MAX_MORALE_COST = 3;
 
 export const MEAT_MONSTER_MIN_STATS = Object.freeze({
   health: 17,
@@ -30,6 +34,14 @@ export function createMeatMonsterStats(random) {
   return stats;
 }
 
+function randomInteger(random, min, max, name) {
+  const roll = random();
+  if (!Number.isFinite(roll) || roll < 0 || roll >= 1) {
+    throw new Error(`Meat monster ${name} random must return a number in [0, 1)`);
+  }
+  return min + Math.floor(roll * (max - min + 1));
+}
+
 export function createMeatMonster({
   id,
   col,
@@ -55,6 +67,18 @@ export function createMeatMonster({
     facing,
     stats: concreteStats,
     statsMax: { ...concreteStats },
+    nutrition: randomInteger(
+      random,
+      MEAT_MONSTER_MIN_NUTRITION,
+      MEAT_MONSTER_MAX_NUTRITION,
+      "nutrition",
+    ),
+    moraleCost: randomInteger(
+      random,
+      MEAT_MONSTER_MIN_MORALE_COST,
+      MEAT_MONSTER_MAX_MORALE_COST,
+      "morale cost",
+    ),
     // During a step col/row remain the source; move reserves the destination.
     move: null,
     attack: null,

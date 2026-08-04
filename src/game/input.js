@@ -18,6 +18,11 @@ export function createKeyboardInput(target = window) {
   const pressed = []; // discrete action ids since the last drain
 
   function onKeyDown(event) {
+    if (event.code === "KeyE") {
+      if (!event.repeat) pressed.push("consume");
+      event.preventDefault();
+      return;
+    }
     if (event.code === "Space") {
       keys.attack = true;
       if (!event.repeat) pressed.push("attack");

@@ -1,3 +1,4 @@
+import { CORPSE_KIND } from "../../world/corpse.js";
 import { getWall, hasWall } from "../../world/maze.js";
 
 const DIRS = {
@@ -17,6 +18,7 @@ const DIRS = {
 export function createActionAdapter({
   world,
   player,
+  character,
   costs,
   findEntryBlocker = () => null,
 }) {
@@ -32,6 +34,27 @@ export function createActionAdapter({
   }
 
   function adapt(desired) {
+    if (desired === "consume") {
+      const cell = world.at(player.col, player.row);
+      const corpse = cell?.objects.find(({ kind }) => kind === CORPSE_KIND) ?? null;
+      if (
+        corpse === null ||
+        !character ||
+        character.stats.morale <= 0 ||
+        character.stats.health >= character.statsMax.health
+      ) return null;
+      return {
+        kind: "consume",
+        timeCost: costs.consume,
+        target: {
+          col: player.col,
+          row: player.row,
+          corpseId: corpse.id,
+          entityId: corpse.entityId,
+        },
+      };
+    }
+
     if (desired === "attack") {
       const [dx, dy] = DIRS[player.facing] ?? [0, 0];
       if (getWall(world, player.col, player.row, dx, dy) !== null) {

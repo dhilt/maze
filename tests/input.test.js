@@ -37,8 +37,10 @@ test("discrete presses drain once; repeats are ignored", () => {
   target.dispatch("keydown", { code: "ArrowLeft" });
   target.dispatch("keydown", { code: "ArrowLeft", repeat: true }); // auto-repeat ignored
   target.dispatch("keydown", { code: "Space" });
+  target.dispatch("keydown", { code: "KeyE" });
+  target.dispatch("keydown", { code: "KeyE", repeat: true });
 
-  assert.deepEqual(input.drainPressed(), ["left", "attack"]);
+  assert.deepEqual(input.drainPressed(), ["left", "attack", "consume"]);
   assert.deepEqual(input.drainPressed(), []); // drained
   input.destroy();
 });

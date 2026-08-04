@@ -252,3 +252,26 @@ test("unknown enemy kinds are ignored by the enemy renderer", () => {
 
   assert.deepEqual(ctx.translations, []);
 });
+
+test("preserved dead monsters are omitted from the active enemy layer", () => {
+  const ctx = createContext();
+  drawEnemies(ctx, {
+    monsters: [{
+      id: "m1",
+      kind: "meat-monster",
+      col: 1,
+      row: 1,
+      facing: "down",
+      move: null,
+      attack: null,
+      stats: { health: 0 },
+      statsMax: { health: 20 },
+    }],
+    cam: { px: 0, py: 0 },
+    cellSize: 64,
+    meatMonsterSprites: createSprites(),
+  });
+
+  assert.deepEqual(ctx.images, []);
+  assert.deepEqual(ctx.translations, []);
+});

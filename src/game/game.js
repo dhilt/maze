@@ -7,6 +7,7 @@ import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
 import { createActionAdapter } from "./actions/adapter.js";
 import { createAttack } from "./actions/attack.js";
+import { createConsume } from "./actions/consume.js";
 import { createCamera } from "./camera.js";
 import { createClock } from "./clock.js";
 import { createCombat } from "./combat.js";
@@ -105,9 +106,16 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     onStatChange: () => { statsDirty = true; },
     onImpact: combat.queueImpact,
   });
+  const consume = createConsume({
+    world,
+    character,
+    findEntityById: (id) => monsters.find((monster) => monster.id === id) ?? null,
+    onStatChange: () => { statsDirty = true; },
+  });
   const adapter = createActionAdapter({
     world,
     player,
+    character,
     costs: config.actionCosts,
     findEntryBlocker: enemies.findEntryBlocker,
   });
@@ -115,6 +123,7 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     adapter,
     movement,
     attack,
+    consume,
     input,
     onStep: reachedExit,
   });

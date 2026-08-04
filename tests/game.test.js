@@ -152,10 +152,43 @@ test("hero and monster contacts in the same frame resolve simultaneously", () =>
     environment.runFrame();
 
     assert.equal(state.character.stats.health, 0);
-    assert.equal(state.monsters.length, 0);
+    assert.equal(state.monsters.length, 1);
+    assert.equal(state.monsters[0].stats.health, 0);
     assert.equal(corpseCell.objects[0].kind, "corpse");
-    assert.equal(corpseCell.objects[0].entityKind, "meat-monster");
+    assert.equal(corpseCell.objects[0].entityId, monster.id);
     assert.deepEqual(outcomes, ["died"]);
+  });
+});
+
+test("the hero consumes a linked corpse with E after spending action time", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 10,
+      health: 10,
+      exitX: 4,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    monster.col = state.player.col;
+    monster.row = state.player.row;
+    monster.stats.health = 0;
+    monster.nutrition = 6;
+    monster.moraleCost = 2;
+    state.character.stats.morale = 8;
+    const cell = state.world.at(state.player.col, state.player.row);
+
+    game.start();
+    environment.runFrame();
+    assert.equal(cell.objects[0].entityId, monster.id);
+
+    environment.target.dispatchEvent(keyEvent("keydown", "KeyE"));
+    environment.runFrame(200);
+
+    assert.equal(state.character.stats.health, 16);
+    assert.equal(state.character.stats.morale, 6);
+    assert.deepEqual(cell.objects, []);
+    assert.equal(state.monsters[0], monster, "the eaten entity remains in history");
+    game.stop();
   });
 });
 

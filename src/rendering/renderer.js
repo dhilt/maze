@@ -52,7 +52,7 @@ export function createRenderer(ctx, config) {
   }
 
   // Draw the continuous floor, optional gameplay grid, then the maze walls.
-  function drawWorld(cam, world, dbg, activeFloorStyle, time) {
+  function drawWorld(cam, world, dbg, activeFloorStyle, time, entities) {
     getFloor(world, activeFloorStyle).draw(ctx, cam, W, H);
 
     // The gameplay grid is a debug overlay only. With debug off the slabs
@@ -84,6 +84,7 @@ export function createRenderer(ctx, config) {
       viewCols: VC,
       viewRows: VR,
       objectSprites: OBJECT_SPRITES,
+      entities,
     });
 
     drawExits(ctx, {
@@ -151,7 +152,7 @@ export function createRenderer(ctx, config) {
     ctx.beginPath();
     ctx.rect(-cam.px, -cam.py, world.width * CELL, world.height * CELL);
     ctx.clip();
-    drawWorld(cam, world, dbg, activeFloorStyle, time);
+    drawWorld(cam, world, dbg, activeFloorStyle, time, state.monsters ?? []);
     drawEnemies(ctx, {
       monsters: state.monsters ?? [],
       cam,

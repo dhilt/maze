@@ -1,14 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createCharacter } from "../src/entities/character.js";
 import { createActionAdapter } from "../src/game/actions/adapter.js";
 import { createWall } from "../src/world/maze.js";
 import { generateWorld } from "../src/world/world.js";
 
-const COSTS = { step: 5, turn: 1, attack: 5 };
+const COSTS = { step: 5, turn: 1, attack: 5, consume: 10 };
 
-function makeAdapter(world, player, findEntryBlocker) {
-  return createActionAdapter({ world, player, costs: COSTS, findEntryBlocker });
+function makeAdapter(world, player, findEntryBlocker, character) {
+  return createActionAdapter({
+    world,
+    player,
+    character,
+    costs: COSTS,
+    findEntryBlocker,
+  });
 }
 
 test("a clear direction resolves to a step", () => {
@@ -117,4 +124,33 @@ test("attack facing the world perimeter resolves against an indestructible wall"
   const a = adapter.adapt("attack");
   assert.equal(a.kind, "wallAttack");
   assert.deepEqual(a.target, { x: 0, y: 1, dx: -1, dy: 0 });
+});
+
+test("consume resolves only for an injured hero with morale standing on a corpse", () => {
+  const world = generateWorld({ width: 1, height: 1, seed: 1 });
+  const player = { col: 0, row: 0, facing: "down" };
+  const character = createCharacter({ stats: { health: 15, morale: 1 } });
+  const corpse = {
+    id: "corpse-m1",
+    kind: "corpse",
+    layer: "background",
+    entityId: "m1",
+  };
+  world.at(0, 0).objects.push(corpse);
+  const adapter = makeAdapter(world, player, undefined, character);
+
+  assert.deepEqual(adapter.adapt("consume"), {
+    kind: "consume",
+    timeCost: 10,
+    target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
+  });
+
+  character.stats.morale = 0;
+  assert.equal(adapter.adapt("consume"), null);
+  character.stats.morale = 1;
+  character.stats.health = character.statsMax.health;
+  assert.equal(adapter.adapt("consume"), null);
+  character.stats.health = 15;
+  world.at(0, 0).objects.length = 0;
+  assert.equal(adapter.adapt("consume"), null);
 });

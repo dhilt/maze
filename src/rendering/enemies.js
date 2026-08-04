@@ -48,6 +48,10 @@ function occupiedCell(actor, move = actor.move) {
   };
 }
 
+function isAlive(monster) {
+  return (monster.stats?.health ?? 1) > 0;
+}
+
 function healthBarVisible(monster, adjacent, realTime, renderState) {
   const visibleUntil = renderState.healthBarVisibleUntil;
   if (adjacent) {
@@ -114,12 +118,14 @@ export function drawEnemies(ctx, {
   realTime = 0,
   renderState = createEnemyRenderState(),
 }) {
-  const liveIds = new Set(monsters.map(({ id }) => id));
+  const liveIds = new Set(monsters
+    .filter(isAlive)
+    .map(({ id }) => id));
   for (const id of renderState.healthBarVisibleUntil.keys()) {
     if (!liveIds.has(id)) renderState.healthBarVisibleUntil.delete(id);
   }
   for (const monster of monsters) {
-    if (monster.kind === "meat-monster") {
+    if (isAlive(monster) && monster.kind === "meat-monster") {
       drawMeatMonster(
         ctx,
         monster,

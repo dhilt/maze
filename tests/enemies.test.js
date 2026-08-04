@@ -5,7 +5,11 @@ import {
   createMeatMonster,
   createMeatMonsterStats,
   MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
+  MEAT_MONSTER_MAX_MORALE_COST,
+  MEAT_MONSTER_MAX_NUTRITION,
   MEAT_MONSTER_MAX_STATS,
+  MEAT_MONSTER_MIN_MORALE_COST,
+  MEAT_MONSTER_MIN_NUTRITION,
   MEAT_MONSTER_MIN_STATS,
 } from "../src/entities/meat-monster.js";
 import { createActionAdapter } from "../src/game/actions/adapter.js";
@@ -57,6 +61,8 @@ test("every meat monster owns independent current and maximum stats", () => {
   assert.deepEqual(first.stats, { health: 20, attack: 6, defense: 4, morale: 6 });
   assert.notEqual(first.stats, first.statsMax);
   assert.notEqual(first.stats, second.stats);
+  assert.equal(first.nutrition, 6);
+  assert.equal(first.moraleCost, 2);
   first.stats.health = 0;
   assert.equal(first.statsMax.health, 20);
   assert.equal(second.stats.health, 20);
@@ -101,8 +107,16 @@ test("meat monster spawning is deterministic, unique, and avoids hero and exit",
 
   const first = spawnMeatMonsters({ world, player, count: 6, seed: 19 });
   const second = spawnMeatMonsters({ world, player, count: 6, seed: 19 });
-  const snapshot = (monsters) => monsters.map(({ id, col, row, facing, stats }) => ({
-    id, col, row, facing, stats,
+  const snapshot = (monsters) => monsters.map(({
+    id,
+    col,
+    row,
+    facing,
+    stats,
+    nutrition,
+    moraleCost,
+  }) => ({
+    id, col, row, facing, stats, nutrition, moraleCost,
   }));
 
   assert.deepEqual(snapshot(first), snapshot(second));
@@ -115,6 +129,10 @@ test("meat monster spawning is deterministic, unique, and avoids hero and exit",
       assert.ok(monster.stats[name] >= min);
       assert.ok(monster.stats[name] <= MEAT_MONSTER_MAX_STATS[name]);
     }
+    assert.ok(monster.nutrition >= MEAT_MONSTER_MIN_NUTRITION);
+    assert.ok(monster.nutrition <= MEAT_MONSTER_MAX_NUTRITION);
+    assert.ok(monster.moraleCost >= MEAT_MONSTER_MIN_MORALE_COST);
+    assert.ok(monster.moraleCost <= MEAT_MONSTER_MAX_MORALE_COST);
   }
   assert.ok(first.some(({ col, row }) => (
     Math.max(Math.abs(col - player.col), Math.abs(row - player.row)) <= 3 &&

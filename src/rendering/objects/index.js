@@ -14,9 +14,11 @@ export function drawObjects(ctx, {
   viewRows,
   layer = "background",
   objectSprites = {},
+  entities = [],
 }) {
   const startCol = Math.floor(cam.px / cellSize);
   const startRow = Math.floor(cam.py / cellSize);
+  const entitiesById = new Map(entities.map((entity) => [entity.id, entity]));
 
   for (let row = startRow; row <= startRow + viewRows; row++) {
     for (let col = startCol; col <= startCol + viewCols; col++) {
@@ -32,6 +34,7 @@ export function drawObjects(ctx, {
           y: row * cellSize - cam.py,
           cellSize,
           sprites: objectSprites[object.kind],
+          entity: entitiesById.get(object.entityId) ?? null,
         });
       }
     }

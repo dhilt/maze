@@ -26,7 +26,7 @@ function recordingContext() {
   };
 }
 
-function renderContext(world, objectSprites = {}) {
+function renderContext(world, objectSprites = {}, entities = []) {
   const ctx = recordingContext();
   drawObjects(ctx, {
     cam: { px: 0, py: 0 },
@@ -35,6 +35,7 @@ function renderContext(world, objectSprites = {}) {
     viewCols: world.width,
     viewRows: world.height,
     objectSprites,
+    entities,
   });
   return ctx;
 }
@@ -73,11 +74,16 @@ test("a meat monster corpse renders as a non-blocking cell object", () => {
     id: "corpse-m1",
     kind: "corpse",
     layer: "background",
-    entityKind: "meat-monster",
+    entityId: "m1",
   });
   const image = { complete: true, naturalWidth: 64, id: "corpse" };
+  const monster = { id: "m1", kind: "meat-monster" };
 
-  const ctx = renderContext(world, { corpse: { "meat-monster": image } });
+  const ctx = renderContext(
+    world,
+    { corpse: { "meat-monster": image } },
+    [monster],
+  );
 
   assert.deepEqual(ctx.images, [[image, 0, 0, 64, 64]]);
 });

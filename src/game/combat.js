@@ -17,6 +17,7 @@ export function createCombat({
   onMonsterDeath,
 }) {
   let queued = [];
+  const handledDeaths = new Set();
 
   function findCombatant(ref) {
     if (ref?.type === "player") {
@@ -134,14 +135,14 @@ export function createCombat({
       start = end;
     }
 
+    // Dead entities remain in the collection for history and corpse references.
     const deadMonsterIds = [];
-    for (let index = monsters.length - 1; index >= 0; index -= 1) {
-      if (monsters[index].stats.health > 0) continue;
-      onMonsterDeath?.(monsters[index]);
-      deadMonsterIds.push(monsters[index].id);
-      monsters.splice(index, 1);
+    for (const monster of monsters) {
+      if (monster.stats.health > 0 || handledDeaths.has(monster.id)) continue;
+      handledDeaths.add(monster.id);
+      onMonsterDeath?.(monster);
+      deadMonsterIds.push(monster.id);
     }
-    deadMonsterIds.reverse();
     if (playerDamage > 0) onPlayerDamage?.(playerDamage);
 
     return { impacts, deadMonsterIds, playerDamage };

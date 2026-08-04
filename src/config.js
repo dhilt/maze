@@ -1,4 +1,4 @@
-export const VERSION = "0.60";
+export const VERSION = "0.61";
 
 // Physical seconds are converted to logical game-time units before they reach
 // the action bus. At normal speed 1 unit lasts 100 ms.
@@ -13,6 +13,7 @@ const ACTION_COSTS = Object.freeze({
   step: 5,
   turn: 1,
   attack: 5,
+  consume: 10,
 });
 
 const ENEMIES = Object.freeze({

@@ -16,7 +16,7 @@ test("a dead moving monster leaves a serialisable corpse in its occupied cell", 
     id: "corpse-m1",
     kind: "corpse",
     layer: "background",
-    entityKind: "meat-monster",
+    entityId: "m1",
   });
   assert.deepEqual(world.at(1, 0).objects, [corpse]);
   assert.deepEqual(world.at(2, 0).objects, []);

@@ -57,7 +57,8 @@ test("mutual death is possible when contacts happen at the same time", () => {
 
   assert.equal(character.stats.health, 0);
   assert.deepEqual(result.deadMonsterIds, ["monster-1"]);
-  assert.equal(monsters.length, 0);
+  assert.equal(monsters.length, 1, "dead entities remain available as history");
+  assert.equal(monsters[0].stats.health, 0);
 });
 
 test("an earlier lethal hit cancels the defeated attacker's later contact", () => {
@@ -69,7 +70,25 @@ test("an earlier lethal hit cancels the defeated attacker's later contact", () =
 
   assert.equal(character.stats.health, 2);
   assert.equal(result.impacts.length, 1);
-  assert.equal(monsters.length, 0);
+  assert.equal(monsters.length, 1);
+  assert.equal(monsters[0].stats.health, 0);
+});
+
+test("a preserved dead monster emits its death event only once", () => {
+  const { player, character, monster, monsters } = duel({ monsterHealth: 2 });
+  const deaths = [];
+  const combat = createCombat({
+    player,
+    character,
+    monsters,
+    onMonsterDeath: (dead) => deaths.push(dead.id),
+  });
+  combat.queueImpact(heroHit());
+
+  assert.deepEqual(combat.resolve().deadMonsterIds, [monster.id]);
+  assert.deepEqual(combat.resolve().deadMonsterIds, []);
+  assert.deepEqual(deaths, [monster.id]);
+  assert.equal(monsters[0], monster);
 });
 
 test("an entity attack misses after its target leaves the attacked cell", () => {

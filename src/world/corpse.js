@@ -18,7 +18,7 @@ export function placeCorpse(world, entity) {
     id: `corpse-${entity.id}`,
     kind: CORPSE_KIND,
     layer: "background",
-    entityKind: entity.kind,
+    entityId: entity.id,
   };
   cell.objects.push(corpse);
   return corpse;

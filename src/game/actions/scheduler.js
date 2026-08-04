@@ -9,13 +9,26 @@
 // direction or attack refills it (auto-repeat).
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
-export function createActionScheduler({ adapter, movement, attack, input, onStep }) {
+export function createActionScheduler({
+  adapter,
+  movement,
+  attack,
+  consume,
+  input,
+  onStep,
+}) {
   const queue = []; // desired action ids, in order
   let running = null; // the executor advancing queue[0], or null
 
   // Registry of executors by resolved-action kind. Adding an action kind means
   // adding an entry here; an unknown kind is a bug, so fail loudly.
-  const executors = { step: movement, turn: movement, attack, wallAttack: attack };
+  const executors = {
+    step: movement,
+    turn: movement,
+    attack,
+    wallAttack: attack,
+    consume,
+  };
 
   function enqueue(id) {
     if (queue.length >= 2) return;

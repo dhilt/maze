@@ -43,6 +43,7 @@ const stepOf = (dir) => ({ kind: "step", dx: 0, dy: 0, timeCost: 5, facing: dir 
 const turnOf = (dir) => ({ kind: "turn", dx: 0, dy: 0, timeCost: 1, facing: dir });
 const attackOf = () => ({ kind: "attack", dx: 0, dy: 0, timeCost: 5, facing: null });
 const wallAttackOf = () => ({ kind: "wallAttack", timeCost: 5, facing: null });
+const consumeOf = () => ({ kind: "consume", timeCost: 10 });
 
 function resolveByKind(map) {
   return (id) => (id in map ? map[id]() : stepOf(id));
@@ -174,6 +175,25 @@ test("a wall attack uses the attack executor", () => {
   assert.equal(attack.log.length, 1);
   assert.equal(attack.log[0].kind, "wallAttack");
   assert.equal(scheduler.attackState.kind, "wallAttack");
+});
+
+test("consume uses its own executor", () => {
+  const consume = makeExecutor();
+  const input = makeInput();
+  input.queue("consume");
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ consume: consumeOf })),
+    movement: makeExecutor(),
+    attack: makeExecutor(),
+    consume,
+    input,
+  });
+
+  scheduler.update(1);
+
+  assert.equal(consume.log.length, 1);
+  assert.equal(consume.log[0].kind, "consume");
+  assert.equal(scheduler.activeId, "consume");
 });
 
 test("a held direction auto-repeats when the queue is empty", () => {

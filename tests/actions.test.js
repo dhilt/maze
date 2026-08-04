@@ -7,8 +7,8 @@ import { generateWorld } from "../src/world/world.js";
 
 const COSTS = { step: 5, turn: 1, attack: 5 };
 
-function makeAdapter(world, player) {
-  return createActionAdapter({ world, player, costs: COSTS });
+function makeAdapter(world, player, findEntryBlocker) {
+  return createActionAdapter({ world, player, costs: COSTS, findEntryBlocker });
 }
 
 test("a clear direction resolves to a step", () => {
@@ -48,6 +48,29 @@ test("the world boundary transforms a move into a one-unit turn", () => {
   assert.equal(a.facing, "up");
 });
 
+test("an occupied cell turns first, then a frontal move becomes an attack", () => {
+  const world = generateWorld({ width: 3, height: 3, seed: 1 });
+  const player = { col: 1, row: 1, facing: "down" };
+  const adapter = makeAdapter(
+    world,
+    player,
+    (_fromCol, _fromRow, col, row) => (
+      col === 2 && row === 1 ? { id: "monster-1" } : null
+    ),
+  );
+
+  const turn = adapter.adapt("right");
+  assert.equal(turn.kind, "turn");
+  assert.equal(turn.facing, "right");
+
+  player.facing = "right";
+  const attack = adapter.adapt("right");
+  assert.equal(attack.kind, "attack");
+  assert.equal(attack.timeCost, COSTS.attack);
+  assert.deepEqual(attack.targetCell, { col: 2, row: 1 });
+  assert.equal(attack.target, undefined);
+});
+
 test("attack resolves to an attack action that keeps facing", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   const adapter = makeAdapter(world, { col: 2, row: 2, facing: "down" });
@@ -55,6 +78,23 @@ test("attack resolves to an attack action that keeps facing", () => {
   assert.equal(a.kind, "attack");
   assert.equal(a.timeCost, 5);
   assert.equal(a.facing, null);
+  assert.deepEqual(a.targetCell, { col: 2, row: 3 });
+});
+
+test("explicit attack targets the facing cell, not its current occupant", () => {
+  const world = generateWorld({ width: 3, height: 3, seed: 1 });
+  const adapter = makeAdapter(
+    world,
+    { col: 1, row: 1, facing: "right" },
+    (_fromCol, _fromRow, col, row) => (
+      col === 2 && row === 1 ? { id: "monster-1" } : null
+    ),
+  );
+
+  const attack = adapter.adapt("attack");
+
+  assert.equal(attack.target, undefined);
+  assert.deepEqual(attack.targetCell, { col: 2, row: 1 });
 });
 
 test("attack facing a stored wall resolves to a wall attack", () => {

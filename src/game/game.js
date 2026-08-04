@@ -1,6 +1,7 @@
 import { createCharacter } from "../entities/character.js";
 import { createRenderer } from "../rendering/renderer.js";
 import { createStatsPanel } from "../ui/stats-panel.js";
+import { placeCorpse } from "../world/corpse.js";
 import { placeExit } from "../world/exit.js";
 import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
@@ -8,7 +9,9 @@ import { createActionAdapter } from "./actions/adapter.js";
 import { createAttack } from "./actions/attack.js";
 import { createCamera } from "./camera.js";
 import { createClock } from "./clock.js";
+import { createCombat } from "./combat.js";
 import { createHealthDrain } from "./health-drain.js";
+import { createEnemySystem, spawnMeatMonsters } from "./enemies/enemy-system.js";
 import { createKeyboardInput } from "./input.js";
 import { createMovement } from "./actions/movement.js";
 import { createActionScheduler } from "./actions/scheduler.js";
@@ -68,17 +71,45 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
 
   const input = createKeyboardInput(window);
   const movement = createMovement({ player, cellSize: config.cellSize });
+  const enemySeed = (mazeSeed ^ 0x6d2b79f5) >>> 0;
+  const monsters = spawnMeatMonsters({
+    world,
+    player,
+    count: config.enemies.meatMonster.count,
+    seed: enemySeed,
+  });
   let statsDirty = false;
+  const combat = createCombat({
+    player,
+    character,
+    monsters,
+    getPlayerMove: () => movement.move,
+    onPlayerDamage: () => { statsDirty = true; },
+    onMonsterDeath: (monster) => placeCorpse(world, monster),
+  });
+  const enemies = createEnemySystem({
+    world,
+    player,
+    getPlayerMove: () => movement.move,
+    monsters,
+    stepCost: config.enemies.meatMonster.stepCost,
+    turnCost: config.actionCosts.turn,
+    attackCost: config.actionCosts.attack,
+    seed: (enemySeed ^ 0x85ebca6b) >>> 0,
+    onImpact: combat.queueImpact,
+  });
   const attack = createAttack({
     world,
     character,
     statWear,
     onStatChange: () => { statsDirty = true; },
+    onImpact: combat.queueImpact,
   });
   const adapter = createActionAdapter({
     world,
     player,
     costs: config.actionCosts,
+    findEntryBlocker: enemies.findEntryBlocker,
   });
   const scheduler = createActionScheduler({
     adapter,
@@ -109,8 +140,13 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     if (healthDrain.advance(tick.dt) > 0) statsDirty = true;
     // Death is terminal at the instant the drain reaches zero. Do not let the
     // same frame spend its action budget and move a dead hero onto the exit.
-    const died = character.stats.health <= 0;
-    if (!died) scheduler.update(tick.dt);
+    let died = character.stats.health <= 0;
+    if (!died) {
+      scheduler.update(tick.dt);
+      enemies.update(tick.dt);
+      combat.resolve();
+      died = character.stats.health <= 0;
+    }
     if (statsDirty) {
       statsPanel.update(character);
       statsDirty = false;
@@ -125,6 +161,7 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
       facing: scheduler.facing,
       cam: camera.state,
       world,
+      monsters,
       tick,
       debug: debugControl?.checked ?? config.debug,
       floorStyle: config.floorStyle,
@@ -172,6 +209,7 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
       facing: scheduler.facing,
       cam: camera.state,
       world,
+      monsters,
       character,
       gameTime: gameTime.time,
     };

@@ -27,7 +27,55 @@ test("attack runs for its time cost then clears", () => {
   assert.ok(Math.abs(leftover - 0.1) < 1e-9);
 });
 
-test("a wall attack damages on completion and removes the wall at zero", () => {
+test("an attacked cell is checked at the shared attack peak", () => {
+  const impacts = [];
+  const attack = createAttack({
+    onImpact: (impact) => {
+      impacts.push({ ...impact, strike: undefined });
+      impact.strike.hitResolved = true;
+    },
+  });
+  attack.begin({
+    kind: "attack",
+    timeCost: 5,
+    targetCell: { col: 2, row: 1 },
+  });
+
+  attack.update(2);
+  attack.update(4, 1.5);
+
+  assert.deepEqual(impacts, [{
+    at: 2,
+    attacker: { type: "player" },
+    targetCell: { col: 2, row: 1 },
+    strike: undefined,
+  }]);
+});
+
+test("an empty strike remains active briefly after its peak", () => {
+  const impacts = [];
+  const attack = createAttack({
+    onImpact: (impact) => {
+      impacts.push(impact);
+      if (impacts.length === 2) impact.strike.hitResolved = true;
+    },
+  });
+  attack.begin({
+    kind: "attack",
+    timeCost: 5,
+    targetCell: { col: 2, row: 1 },
+  });
+
+  attack.update(2.5);
+  attack.update(0.5);
+  attack.update(0.1);
+
+  assert.equal(impacts.length, 2);
+  assert.equal(impacts[0].at, 2.5);
+  assert.equal(impacts[1].at, 0);
+});
+
+test("a wall attack damages at contact and removes the wall at zero", () => {
   const world = generateWorld({ width: 3, height: 3, seed: 1 });
   world.at(1, 1).wallRight = createWall({ health: 10, defense: 2, impactWear: 1 });
   const character = createCharacter({ stats: { attack: 7 } });
@@ -40,11 +88,13 @@ test("a wall attack damages on completion and removes the wall at zero", () => {
   };
 
   attack.begin(resolved);
-  attack.update(4.9);
-  assert.equal(world.at(1, 1).wallRight.stats.health, 10, "damage lands with the action");
+  attack.update(2.4);
+  assert.equal(world.at(1, 1).wallRight.stats.health, 10, "damage waits for contact");
   attack.update(0.1);
   assert.equal(world.at(1, 1).wallRight.stats.health, 5);
   assert.equal(statWear.remaining("attack"), 0.89);
+  attack.update(2.5);
+  assert.equal(attack.active, false, "recovery continues after contact");
 
   attack.begin(resolved);
   attack.update(5);

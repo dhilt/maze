@@ -9,7 +9,10 @@ import {
   selectAttackFrame,
 } from "./character/knight-sprites.js";
 import { drawExits } from "./exits.js";
+import { createEnemyRenderState, drawEnemies } from "./enemies.js";
+import { loadMeatMonsterSprites } from "./meat-monster-sprites.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
+import { loadCorpseSprites } from "./objects/corpse.js";
 import { drawObjects } from "./objects/index.js";
 import { drawWalls } from "./walls.js";
 
@@ -24,6 +27,9 @@ export function createRenderer(ctx, config) {
   } = config;
 
   const KNIGHT_SPRITES = loadKnightSprites();
+  const MEAT_MONSTER_SPRITES = loadMeatMonsterSprites();
+  const OBJECT_SPRITES = { corpse: loadCorpseSprites() };
+  const ENEMY_RENDER_STATE = createEnemyRenderState();
   const W = VC * CELL;
   const H = VR * CELL;
   const numFont = `${Math.round(CELL * 0.17)}px system-ui, sans-serif`;
@@ -77,6 +83,7 @@ export function createRenderer(ctx, config) {
       cellSize: CELL,
       viewCols: VC,
       viewRows: VR,
+      objectSprites: OBJECT_SPRITES,
     });
 
     drawExits(ctx, {
@@ -145,6 +152,16 @@ export function createRenderer(ctx, config) {
     ctx.rect(-cam.px, -cam.py, world.width * CELL, world.height * CELL);
     ctx.clip();
     drawWorld(cam, world, dbg, activeFloorStyle, time);
+    drawEnemies(ctx, {
+      monsters: state.monsters ?? [],
+      cam,
+      cellSize: CELL,
+      meatMonsterSprites: MEAT_MONSTER_SPRITES,
+      player: state.player,
+      playerMove: state.move,
+      realTime: Number.isFinite(state.tick?.realTime) ? state.tick.realTime : 0,
+      renderState: ENEMY_RENDER_STATE,
+    });
     drawPlayer(state, cam);
     ctx.restore();
   }

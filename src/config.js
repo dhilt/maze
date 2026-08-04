@@ -1,4 +1,4 @@
-export const VERSION = "0.55";
+export const VERSION = "0.60";
 
 // Physical seconds are converted to logical game-time units before they reach
 // the action bus. At normal speed 1 unit lasts 100 ms.
@@ -15,6 +15,10 @@ const ACTION_COSTS = Object.freeze({
   attack: 5,
 });
 
+const ENEMIES = Object.freeze({
+  meatMonster: Object.freeze({ count: 8, stepCost: 8 }),
+});
+
 export const GAME_CONFIG = Object.freeze({
   cellSize: 64,
   viewCols: 10,
@@ -24,6 +28,7 @@ export const GAME_CONFIG = Object.freeze({
   cameraMargin: 2,
   gameTime: GAME_TIME,
   actionCosts: ACTION_COSTS,
+  enemies: ENEMIES,
   debug: false,
   floorStyle: "crypt",
   worldSeed: 1,

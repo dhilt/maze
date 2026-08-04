@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveImpact } from "../src/game/actions/impact.js";
+import { resolveDamage, resolveImpact } from "../src/game/actions/impact.js";
+
+test("finite defense leaves chip damage, while infinite defense is absolute", () => {
+  assert.equal(resolveDamage({ power: 5, defense: 5 }), 1);
+  assert.equal(resolveDamage({ power: 5, defense: 100 }), 1);
+  assert.equal(resolveDamage({ power: 5, defense: Infinity }), 0);
+  assert.equal(resolveDamage({ power: 0, defense: 0 }), 0);
+});
 
 test("impact separates blocked and penetrating damage", () => {
   assert.deepEqual(resolveImpact({

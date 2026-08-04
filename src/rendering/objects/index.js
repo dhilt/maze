@@ -1,6 +1,8 @@
+import { drawCorpse } from "./corpse.js";
 import { drawWallRubble } from "./wall-rubble.js";
 
 const DRAWERS = Object.freeze({
+  corpse: drawCorpse,
   "wall-rubble": drawWallRubble,
 });
 
@@ -11,6 +13,7 @@ export function drawObjects(ctx, {
   viewCols,
   viewRows,
   layer = "background",
+  objectSprites = {},
 }) {
   const startCol = Math.floor(cam.px / cellSize);
   const startRow = Math.floor(cam.py / cellSize);
@@ -28,6 +31,7 @@ export function drawObjects(ctx, {
           x: col * cellSize - cam.px,
           y: row * cellSize - cam.py,
           cellSize,
+          sprites: objectSprites[object.kind],
         });
       }
     }

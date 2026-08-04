@@ -48,6 +48,7 @@ export function createActionScheduler({ adapter, movement, attack, input, onStep
     for (const id of input.drainPressed()) enqueue(id);
 
     let budget = deltaUnits;
+    let elapsed = 0;
     let heldTried = false; // auto-repeat pulls a held action at most once/frame
     let guard = 0;
     while (guard++ < 16) {
@@ -62,7 +63,7 @@ export function createActionScheduler({ adapter, movement, attack, input, onStep
         if (!startHead()) continue; // cancelled → try the next head
       }
 
-      const leftover = running.update(budget);
+      const leftover = running.update(budget, elapsed);
       if (running.active) break; // still running this frame
 
       queue.shift();
@@ -72,6 +73,7 @@ export function createActionScheduler({ adapter, movement, attack, input, onStep
       // step the player past it.
       if (onStep && onStep()) break;
       const consumed = budget - leftover;
+      elapsed += consumed;
       budget = leftover;
       // A real (time-consuming) action ran: allow one more held refill so held
       // movement and attacks keep flowing. A zero-cost action with an empty

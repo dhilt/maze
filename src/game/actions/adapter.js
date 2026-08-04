@@ -14,7 +14,23 @@ const DIRS = {
 //                      facing a stored wall → a wallAttack;
 //   * cancel         — return null, and the scheduler drops it from the queue.
 // Every concrete action carries an integer timeCost in logical game-time units.
-export function createActionAdapter({ world, player, costs }) {
+export function createActionAdapter({
+  world,
+  player,
+  costs,
+  findEntryBlocker = () => null,
+}) {
+  function attackCell(col, row) {
+    return {
+      kind: "attack",
+      dx: 0,
+      dy: 0,
+      timeCost: costs.attack,
+      facing: null,
+      targetCell: { col, row },
+    };
+  }
+
   function adapt(desired) {
     if (desired === "attack") {
       const [dx, dy] = DIRS[player.facing] ?? [0, 0];
@@ -28,7 +44,9 @@ export function createActionAdapter({ world, player, costs }) {
           target: { x: player.col, y: player.row, dx, dy },
         };
       }
-      return { kind: "attack", dx: 0, dy: 0, timeCost: costs.attack, facing: null };
+      const col = player.col + dx;
+      const row = player.row + dy;
+      return attackCell(col, row);
     }
 
     const [dx0, dy0] = DIRS[desired];
@@ -38,6 +56,16 @@ export function createActionAdapter({ world, player, costs }) {
     if (player.row + dy < 0 || player.row + dy >= world.height) dy = 0;
     if (dx !== 0 && hasWall(world, player.col, player.row, dx, 0)) dx = 0;
     if (dy !== 0 && hasWall(world, player.col, player.row, 0, dy)) dy = 0;
+    const blocker = (dx !== 0 || dy !== 0)
+      ? findEntryBlocker(player.col, player.row, player.col + dx, player.row + dy)
+      : null;
+    if (blocker !== null && player.facing === desired) {
+      return attackCell(player.col + dx, player.row + dy);
+    }
+    if (blocker !== null) {
+      dx = 0;
+      dy = 0;
+    }
 
     if (dx !== 0 || dy !== 0) {
       return { kind: "step", dx, dy, timeCost: costs.step, facing: desired };

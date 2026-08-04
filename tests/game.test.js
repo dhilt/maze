@@ -66,7 +66,14 @@ function withGameEnvironment(run) {
   }
 }
 
-function createTestGame({ speed, health, exitX }) {
+function createTestGame({
+  speed,
+  health,
+  exitX,
+  exitY = 0,
+  worldRows = 1,
+  monsterCount = 0,
+}) {
   const outcomes = [];
   const game = createGame({
     canvas: {
@@ -82,9 +89,12 @@ function createTestGame({ speed, health, exitX }) {
     config: {
       ...GAME_CONFIG,
       worldCols: 5,
-      worldRows: 1,
+      worldRows,
       wallDensity: 0,
       wallSeed: 1,
+      enemies: {
+        meatMonster: { ...GAME_CONFIG.enemies.meatMonster, count: monsterCount },
+      },
       gameTime: { ...GAME_CONFIG.gameTime, speed },
     },
     onFinish: (outcome) => outcomes.push(outcome),
@@ -93,9 +103,89 @@ function createTestGame({ speed, health, exitX }) {
   const state = game.getState();
   state.character.stats.health = health;
   for (const cell of state.world.cells) cell.exit = false;
-  state.world.at(exitX, 0).exit = true;
+  state.world.at(exitX, exitY).exit = true;
   return { game, state, outcomes };
 }
+
+test("the game spawns and advances the configured meat monsters", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 1,
+      health: 20,
+      exitX: 0,
+      exitY: 0,
+      worldRows: 5,
+      monsterCount: 3,
+    });
+
+    assert.equal(state.monsters.length, 3);
+    assert.equal(
+      new Set(state.monsters.map(({ col, row }) => `${col}:${row}`)).size,
+      3,
+    );
+
+    game.start();
+    environment.runFrame();
+    assert.ok(state.monsters.some((monster) => monster.move !== null));
+    game.stop();
+  });
+});
+
+test("hero and monster contacts in the same frame resolve simultaneously", () => {
+  withGameEnvironment((environment) => {
+    const { game, state, outcomes } = createTestGame({
+      speed: 2.5,
+      health: 2,
+      exitX: 4,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col + 1;
+    monster.row = state.player.row;
+    monster.facing = "left";
+    Object.assign(monster.stats, { health: 2, attack: 7, defense: 5 });
+    const corpseCell = state.world.at(monster.col, monster.row);
+
+    environment.target.dispatchEvent(keyEvent("keydown", "Space"));
+    game.start();
+    environment.runFrame();
+
+    assert.equal(state.character.stats.health, 0);
+    assert.equal(state.monsters.length, 0);
+    assert.equal(corpseCell.objects[0].kind, "corpse");
+    assert.equal(corpseCell.objects[0].entityKind, "meat-monster");
+    assert.deepEqual(outcomes, ["died"]);
+  });
+});
+
+test("the hero can hit a passing monster without receiving a counterattack", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 2.5,
+      health: 20,
+      exitX: 4,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.col = 0;
+    state.player.facing = "right";
+    monster.col = 2;
+    monster.row = 0;
+    monster.facing = "left";
+    Object.assign(monster.stats, { health: 20, attack: 7, defense: 5 });
+
+    environment.target.dispatchEvent(keyEvent("keydown", "Space"));
+    game.start();
+    environment.runFrame();
+
+    assert.equal(monster.stats.health, 18);
+    assert.equal(state.character.stats.health, 20);
+    assert.equal(monster.attack, null);
+    assert.deepEqual([monster.move.dx, monster.move.dy], [-1, 0]);
+    game.stop();
+  });
+});
 
 test("death stops actions and wins the same-frame race against the exit", () => {
   withGameEnvironment((environment) => {

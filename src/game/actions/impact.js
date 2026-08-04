@@ -11,6 +11,16 @@ function nonNegative(value, name, { allowInfinity = false } = {}) {
   return value;
 }
 
+// Finite protection can always be worn down by a real hit; Infinity is the
+// explicit contract for targets that cannot be damaged at all.
+export function resolveDamage({ power, defense }) {
+  nonNegative(power, "power");
+  nonNegative(defense, "defense", { allowInfinity: true });
+
+  if (power === 0 || defense === Infinity) return 0;
+  return Math.min(power, Math.max(1, power - defense));
+}
+
 // Resolves one physical impact without mutating either participant.
 export function resolveImpact({
   power,
@@ -18,13 +28,11 @@ export function resolveImpact({
   impactWear,
   wearMultiplier = 1,
 }) {
-  nonNegative(power, "power");
-  nonNegative(defense, "defense", { allowInfinity: true });
   nonNegative(impactWear, "impactWear");
   nonNegative(wearMultiplier, "wearMultiplier");
 
+  const damage = resolveDamage({ power, defense });
   const blockedDamage = Math.min(power, defense);
-  const damage = Math.max(0, power - defense);
   const statWear = Math.ceil(
     impactWear * wearMultiplier * (
       WEAR_RULES.contact +

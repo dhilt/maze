@@ -55,6 +55,8 @@ test("meat monster stats use the configured inclusive intervals", () => {
     assert.equal(minimum[name], min);
     assert.equal(maximum[name], MEAT_MONSTER_MAX_STATS[name]);
   }
+  assert.equal(MEAT_MONSTER_MIN_STATS.morale, MEAT_MONSTER_MAX_STATS.morale);
+  assert.ok(MEAT_MONSTER_MIN_STATS.morale > 0);
 });
 
 test("every meat monster owns independent current and maximum stats", () => {

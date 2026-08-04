@@ -12,14 +12,14 @@ export const MEAT_MONSTER_MIN_STATS = Object.freeze({
   health: 17,
   attack: 5,
   defense: 3,
-  morale: 5,
+  morale: 1,
 });
 
 export const MEAT_MONSTER_MAX_STATS = Object.freeze({
   health: 23,
   attack: 7,
   defense: 5,
-  morale: 7,
+  morale: 1,
 });
 
 export function createMeatMonsterStats(random) {

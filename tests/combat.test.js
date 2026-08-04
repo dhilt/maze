@@ -11,22 +11,29 @@ function monsterAt({
   health = 20,
   attack = 7,
   defense = 5,
+  morale = 3,
   impactWear = 1,
 } = {}) {
   const monster = createMeatMonster({ id, col: 1, row: 0, facing: "left" });
-  Object.assign(monster.stats, { health, attack, defense });
-  Object.assign(monster.statsMax, { health, attack, defense });
+  Object.assign(monster.stats, { health, attack, defense, morale });
+  Object.assign(monster.statsMax, { health, attack, defense, morale });
   monster.impactWear = impactWear;
   return monster;
 }
 
-function duel({ heroHealth = 20, monsterHealth = 20 } = {}) {
+function duel({
+  heroHealth = 20,
+  heroMorale = 4,
+  heroMoraleMax = 10,
+  monsterHealth = 20,
+  monsterMorale = 3,
+} = {}) {
   const player = { col: 0, row: 0 };
   const character = createCharacter({
-    stats: { health: heroHealth, attack: 7, defense: 5 },
-    statsMax: { health: heroHealth },
+    stats: { health: heroHealth, attack: 7, defense: 5, morale: heroMorale },
+    statsMax: { health: heroHealth, morale: heroMoraleMax },
   });
-  const monster = monsterAt({ health: monsterHealth });
+  const monster = monsterAt({ health: monsterHealth, morale: monsterMorale });
   const monsters = [monster];
   const combat = createCombat({ player, character, monsters });
   return { player, character, monster, monsters, combat };
@@ -67,6 +74,56 @@ test("mutual death is possible when contacts happen at the same time", () => {
   assert.deepEqual(result.deadMonsterIds, ["monster-1"]);
   assert.equal(monsters.length, 1, "dead entities remain available as history");
   assert.equal(monsters[0].stats.health, 0);
+});
+
+test("a player kill restores the defeated monster's morale value", () => {
+  const { player, character, monster, monsters } = duel({
+    heroMorale: 4,
+    heroMoraleMax: 10,
+    monsterHealth: 2,
+    monsterMorale: 3,
+  });
+  const changes = [];
+  const combat = createCombat({
+    player,
+    character,
+    monsters,
+    onPlayerStatChange: (change) => changes.push(change),
+  });
+
+  combat.queueImpact(heroHit());
+  combat.resolve();
+  combat.resolve();
+
+  assert.equal(character.stats.morale, 7);
+  assert.deepEqual(changes, [{ stat: "morale", gained: 3, sourceId: monster.id }]);
+});
+
+test("kill morale is capped by the hero's maximum and ignores unrelated deaths", () => {
+  const { player, character, monster, monsters } = duel({
+    heroMorale: 9,
+    heroMoraleMax: 10,
+    monsterHealth: 2,
+    monsterMorale: 3,
+  });
+  const changes = [];
+  const combat = createCombat({
+    player,
+    character,
+    monsters,
+    onPlayerStatChange: (change) => changes.push(change),
+  });
+
+  combat.queueImpact(heroHit());
+  combat.resolve();
+  assert.equal(character.stats.morale, 10);
+  assert.deepEqual(changes, [{ stat: "morale", gained: 1, sourceId: monster.id }]);
+
+  const unrelated = monsterAt({ id: "unrelated", health: 0, morale: 9 });
+  monsters.push(unrelated);
+  combat.resolve();
+  assert.equal(character.stats.morale, 10);
+  assert.equal(changes.length, 1);
 });
 
 test("an earlier lethal hit cancels the defeated attacker's later contact", () => {

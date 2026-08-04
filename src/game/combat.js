@@ -77,7 +77,7 @@ export function createCombat({
     queued.push({ at, attacker, targetCell, strike });
   }
 
-  function resolveGroup(events, impacts) {
+  function resolveGroup(events, impacts, playerKills) {
     const pending = [];
 
     for (const event of events) {
@@ -116,8 +116,15 @@ export function createCombat({
         const wear = statWear.apply("attack", hit.attackWear);
         if (wear.lost > 0) onPlayerStatChange?.(wear);
       }
-      const total = totals.get(hit.target.key) ?? { target: hit.target, damage: 0 };
+      const total = totals.get(hit.target.key) ?? {
+        target: hit.target,
+        damage: 0,
+        creditedToPlayer: false,
+      };
       total.damage += hit.damage;
+      total.creditedToPlayer ||= (
+        hit.event.attacker.type === "player" && hit.damage > 0
+      );
       totals.set(hit.target.key, total);
       impacts.push({
         at: hit.event.at,
@@ -128,18 +135,34 @@ export function createCombat({
     }
 
     let playerDamage = 0;
-    for (const { target, damage } of totals.values()) {
+    for (const { target, damage, creditedToPlayer } of totals.values()) {
       const before = target.stats.health;
       target.stats.health = Math.max(0, before - damage);
       if (target.ref.type === "player") playerDamage += before - target.stats.health;
+      else if (before > 0 && target.stats.health === 0 && creditedToPlayer) {
+        playerKills.add(target.key);
+      }
     }
     return playerDamage;
+  }
+
+  function rewardMorale(monster) {
+    const reward = monster.stats.morale;
+    if (!Number.isFinite(reward) || reward <= 0) return 0;
+    const before = character.stats.morale;
+    character.stats.morale = Math.min(character.statsMax.morale, before + reward);
+    const gained = character.stats.morale - before;
+    if (gained > 0) {
+      onPlayerStatChange?.({ stat: "morale", gained, sourceId: monster.id });
+    }
+    return gained;
   }
 
   function resolve() {
     const events = queued.sort((left, right) => left.at - right.at);
     queued = [];
     const impacts = [];
+    const playerKills = new Set();
     let playerDamage = 0;
 
     for (let start = 0; start < events.length;) {
@@ -148,7 +171,7 @@ export function createCombat({
         end < events.length &&
         Math.abs(events[end].at - events[start].at) <= SAME_TIME_EPSILON
       ) end += 1;
-      playerDamage += resolveGroup(events.slice(start, end), impacts);
+      playerDamage += resolveGroup(events.slice(start, end), impacts, playerKills);
       start = end;
     }
 
@@ -157,6 +180,8 @@ export function createCombat({
     for (const monster of monsters) {
       if (monster.stats.health > 0 || handledDeaths.has(monster.id)) continue;
       handledDeaths.add(monster.id);
+      // Stored dead entities still produce corpses, but only a new player kill pays morale.
+      if (playerKills.has(monster)) rewardMorale(monster);
       onMonsterDeath?.(monster);
       deadMonsterIds.push(monster.id);
     }

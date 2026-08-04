@@ -6,14 +6,14 @@ import { createClock } from "../src/game/clock.js";
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 
 test("first tick has zero delta and starts time at zero", () => {
-  const clock = createClock();
+  const clock = createClock({ maxDelta: 1 });
   const first = clock.tick(1000);
   assert.equal(first.dt, 0);
   assert.equal(first.time, 0);
 });
 
 test("delta is elapsed seconds and time accumulates", () => {
-  const clock = createClock();
+  const clock = createClock({ maxDelta: 1 });
   clock.tick(1000);
   const b = clock.tick(1050); // +50ms
   assert.ok(near(b.dt, 0.05));
@@ -32,7 +32,7 @@ test("delta is clamped to maxDelta on long gaps", () => {
 });
 
 test("negative gaps (clock skew) never produce negative delta", () => {
-  const clock = createClock();
+  const clock = createClock({ maxDelta: 1 });
   clock.tick(1000);
   const b = clock.tick(900); // time went backwards
   assert.equal(b.dt, 0);

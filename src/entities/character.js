@@ -22,7 +22,7 @@ export function createCharacter(overrides = {}) {
     stats: { ...DEFAULT_STATS, ...stats },
     statsMax: { ...DEFAULT_STATS_MAX, ...statsMax },
     // Game-time units per -1 health tick. 0 or negative disables the drain.
-    healthDrainSpeed: 100,
+    healthDrainSpeed: 200,
     ...characterOverrides,
   };
 }

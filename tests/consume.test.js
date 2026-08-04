@@ -13,7 +13,10 @@ function setup({
   entityExists = true,
 } = {}) {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
-  const character = createCharacter({ stats: { health, morale } });
+  const character = createCharacter({
+    stats: { health, morale },
+    statsMax: { health: 20, morale: 10 },
+  });
   const monster = { id: "m1", nutrition, moraleCost };
   const corpse = {
     id: "corpse-m1",

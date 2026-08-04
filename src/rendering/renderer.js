@@ -17,7 +17,7 @@ import { drawObjects } from "./objects/index.js";
 import { drawWalls } from "./walls.js";
 
 // createRenderer(ctx, config) → { render(state) }
-// config: { cellSize, viewCols, viewRows, worldCols, worldRows, margin, debug }
+// config: { cellSize, viewCols, viewRows, margin, debug }
 export function createRenderer(ctx, config) {
   const {
     cellSize: CELL,

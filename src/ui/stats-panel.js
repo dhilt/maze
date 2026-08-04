@@ -53,8 +53,20 @@ function valueRow(label, value) {
   );
 }
 
+function levelRow(level) {
+  const progress = Math.max(0, Math.min(1, level.progress));
+  const color = `rgb(${GREEN[0]}, ${GREEN[1]}, ${GREEN[2]})`;
+  return (
+    `<div class="stats-row stats-level">` +
+      `<div class="stats-head"><span>Level</span><span class="stats-value">${level.number} / ${level.total}</span></div>` +
+      `<div class="stats-bar"><div class="stats-fill" style="width:${progress * 100}%;background:${color}"></div></div>` +
+    `</div>`
+  );
+}
+
 export function createStatsPanel(root) {
   let current = null;
+  let currentLevel = null;
   let debugVisible = null;
   const remainderFills = new Map();
 
@@ -67,7 +79,7 @@ export function createStatsPanel(root) {
 
   function update(ch) {
     current = ch;
-    const rows = ROWS.map((row) =>
+    const characterRows = ROWS.map((row) =>
       row.type === "bar"
         ? barRow(
             row.label,
@@ -79,6 +91,7 @@ export function createStatsPanel(root) {
           )
         : valueRow(row.label, ch.stats[row.key])
     ).join("");
+    const rows = (currentLevel ? levelRow(currentLevel) : "") + characterRows;
 
     root.innerHTML =
       `<div class="stats-name">${ch.name}</div>` +
@@ -89,6 +102,11 @@ export function createStatsPanel(root) {
       const fill = root.querySelector(`.stats-remainder-fill[data-stat="${row.key}"]`);
       if (fill) remainderFills.set(row.key, fill);
     }
+  }
+
+  function setLevel(level) {
+    currentLevel = level;
+    if (current) update(current);
   }
 
   // Remaining is the fraction of the current sub-point still available.
@@ -102,5 +120,5 @@ export function createStatsPanel(root) {
     fill.style.background = barColor(frac);
   }
 
-  return { update, setRemainder, setDebug };
+  return { update, setRemainder, setDebug, setLevel };
 }

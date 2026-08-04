@@ -1,25 +1,23 @@
 import { createCharacter } from "../entities/character.js";
 import { createRenderer } from "../rendering/renderer.js";
 import { createStatsPanel } from "../ui/stats-panel.js";
-import { placeCorpse } from "../world/corpse.js";
-import { placeExit } from "../world/exit.js";
-import { generateMaze } from "../world/maze.js";
-import { generateWorld } from "../world/world.js";
-import { createActionAdapter } from "./actions/adapter.js";
-import { createAttack } from "./actions/attack.js";
-import { createConsume } from "./actions/consume.js";
-import { createCamera } from "./camera.js";
 import { createClock } from "./clock.js";
-import { createCombat } from "./combat.js";
+import { createLevelSession } from "./create-level-session.js";
 import { createHealthDrain } from "./health-drain.js";
-import { createEnemySystem, spawnMeatMonsters } from "./enemies/enemy-system.js";
 import { createKeyboardInput } from "./input.js";
-import { createMovement } from "./actions/movement.js";
-import { createActionScheduler } from "./actions/scheduler.js";
+import { createLevelBus } from "./levels.js";
 import { createStatWear } from "./stat-wear.js";
 import { createGameTime } from "./time.js";
 
-export function createGame({ canvas, statsRoot, debugControl, config, onFinish }) {
+export function createGame({
+  canvas,
+  statsRoot,
+  debugControl,
+  config,
+  character = createCharacter({ name: "Hero" }),
+  levelBus = createLevelBus(),
+  onFinish,
+}) {
   const ctx = canvas.getContext("2d");
   canvas.width = config.viewCols * config.cellSize;
   canvas.height = config.viewRows * config.cellSize;
@@ -28,117 +26,33 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     cellSize: config.cellSize,
     viewCols: config.viewCols,
     viewRows: config.viewRows,
-    worldCols: config.worldCols,
-    worldRows: config.worldRows,
     margin: config.cameraMargin,
     debug: config.debug,
     floorStyle: config.floorStyle,
   });
-
-  const spawn = {
-    x: Math.floor(config.worldCols / 2),
-    y: Math.floor(config.worldRows / 2),
-  };
-  const world = generateWorld({
-    width: config.worldCols,
-    height: config.worldRows,
-    seed: config.worldSeed,
-  });
-  const mazeSeed = config.wallSeed ?? (Math.random() * 0x100000000) >>> 0;
-  generateMaze(world, {
-    density: config.wallDensity,
-    seed: mazeSeed,
-    baseHealth: config.baseWallHealth,
-    defense: config.baseWallDefense,
-    impactWear: config.wallImpactWear,
-  });
-  placeExit(world, {
-    seed: (mazeSeed ^ 0x9e3779b9) >>> 0,
-  });
-
-  const character = createCharacter({ name: "Hero" });
   const statWear = createStatWear({ character });
   const statsPanel = createStatsPanel(statsRoot);
+  const input = createKeyboardInput(window);
+  const monsterHistory = [];
+  const runMazeSeed = config.wallSeed ?? (Math.random() * 0x100000000) >>> 0;
+  let statsDirty = false;
+
+  function buildLevelSession() {
+    return createLevelSession({
+      level: levelBus.current,
+      config,
+      mazeSeed: runMazeSeed,
+      character,
+      statWear,
+      input,
+      onStatsDirty: () => { statsDirty = true; },
+    });
+  }
+
+  let session = buildLevelSession();
+  statsPanel.setLevel(levelBus.state);
   statsPanel.update(character);
   statsPanel.setDebug(debugControl?.checked ?? config.debug);
-
-  const player = {
-    col: spawn.x,
-    row: spawn.y,
-    facing: "down",
-  };
-  // True when the hero stands on the exit cell. Used as the scheduler's per-step
-  // hook (so a fast frame can't overshoot the exit) and at end of frame.
-  const reachedExit = () => Boolean(world.at(player.col, player.row)?.exit);
-
-  const input = createKeyboardInput(window);
-  const movement = createMovement({ player, cellSize: config.cellSize });
-  const enemySeed = (mazeSeed ^ 0x6d2b79f5) >>> 0;
-  const monsters = spawnMeatMonsters({
-    world,
-    player,
-    count: config.enemies.meatMonster.count,
-    seed: enemySeed,
-  });
-  let statsDirty = false;
-  const combat = createCombat({
-    player,
-    character,
-    monsters,
-    getPlayerMove: () => movement.move,
-    statWear,
-    onPlayerDamage: () => { statsDirty = true; },
-    onPlayerStatChange: () => { statsDirty = true; },
-    onMonsterDeath: (monster) => placeCorpse(world, monster),
-  });
-  const enemies = createEnemySystem({
-    world,
-    player,
-    getPlayerMove: () => movement.move,
-    monsters,
-    stepCost: config.enemies.meatMonster.stepCost,
-    turnCost: config.actionCosts.turn,
-    attackCost: config.actionCosts.attack,
-    seed: (enemySeed ^ 0x85ebca6b) >>> 0,
-    onImpact: combat.queueImpact,
-  });
-  const attack = createAttack({
-    world,
-    character,
-    statWear,
-    onStatChange: () => { statsDirty = true; },
-    onImpact: combat.queueImpact,
-  });
-  const consume = createConsume({
-    world,
-    character,
-    findEntityById: (id) => monsters.find((monster) => monster.id === id) ?? null,
-    onStatChange: () => { statsDirty = true; },
-  });
-  const adapter = createActionAdapter({
-    world,
-    player,
-    character,
-    costs: config.actionCosts,
-    findEntryBlocker: enemies.findEntryBlocker,
-  });
-  const scheduler = createActionScheduler({
-    adapter,
-    movement,
-    attack,
-    consume,
-    input,
-    onStep: reachedExit,
-  });
-  const camera = createCamera({
-    player,
-    movement,
-    world,
-    cellSize: config.cellSize,
-    viewCols: config.viewCols,
-    viewRows: config.viewRows,
-    margin: config.cameraMargin,
-  });
 
   const realClock = createClock({ maxDelta: 0.1 });
   const gameTime = createGameTime(config.gameTime);
@@ -146,19 +60,25 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
   let frameId = null;
   let finished = false;
 
+  function advanceLevel() {
+    monsterHistory.push(...session.monsters);
+    if (!levelBus.advance()) return false;
+    session = buildLevelSession();
+    statsPanel.setLevel(levelBus.state);
+    statsPanel.setRemainder("health", healthDrain.remaining);
+    statsPanel.setRemainder("attack", statWear.remaining("attack"));
+    return true;
+  }
+
   function frame(now) {
     const tick = gameTime.advance(realClock.tick(now));
     const debug = debugControl?.checked ?? config.debug;
     statsPanel.setDebug(debug);
 
     if (healthDrain.advance(tick.dt) > 0) statsDirty = true;
-    // Death is terminal at the instant the drain reaches zero. Do not let the
-    // same frame spend its action budget and move a dead hero onto the exit.
     let died = character.stats.health <= 0;
     if (!died) {
-      scheduler.update(tick.dt);
-      enemies.update(tick.dt);
-      combat.resolve();
+      session.update(tick.dt);
       died = character.stats.health <= 0;
     }
     if (statsDirty) {
@@ -167,29 +87,32 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     }
     statsPanel.setRemainder("health", healthDrain.remaining);
     statsPanel.setRemainder("attack", statWear.remaining("attack"));
-    camera.update();
+    session.updateCamera();
     renderer.render({
-      player,
-      move: scheduler.move,
-      attack: scheduler.attackState,
-      facing: scheduler.facing,
-      cam: camera.state,
-      world,
-      monsters,
+      player: session.player,
+      move: session.move,
+      attack: session.attack,
+      facing: session.facing,
+      cam: session.cam,
+      world: session.world,
+      monsters: session.monsters,
       tick,
       debug,
       floorStyle: config.floorStyle,
     });
 
-    // Draw the final state first, then finish. Death takes priority over an exit
-    // when both conditions are present in the same frame.
+    // Render the landed portal frame before replacing its world. Death keeps
+    // priority over both a level transition and final escape.
     if (died) {
       finish("died");
       return;
     }
-    if (reachedExit()) {
-      finish("escaped");
-      return;
+    if (session.reachedExit()) {
+      if (levelBus.isLast) {
+        finish("escaped");
+        return;
+      }
+      advanceLevel();
     }
     frameId = requestAnimationFrame(frame);
   }
@@ -206,8 +129,6 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
     input.destroy();
   }
 
-  // Terminal transition: tear the loop down cleanly (loop cancelled, frameId
-  // cleared, input released) so the lifecycle is consistent, then notify.
   function finish(outcome) {
     if (finished) return;
     finished = true;
@@ -217,13 +138,16 @@ export function createGame({ canvas, statsRoot, debugControl, config, onFinish }
 
   function getState() {
     return {
-      player,
-      move: scheduler.move,
-      attack: scheduler.attackState,
-      facing: scheduler.facing,
-      cam: camera.state,
-      world,
-      monsters,
+      level: levelBus.state,
+      player: session.player,
+      move: session.move,
+      attack: session.attack,
+      facing: session.facing,
+      cam: session.cam,
+      world: session.world,
+      monsters: session.monsters,
+      monsterHistory,
+      allMonsters: [...monsterHistory, ...session.monsters],
       character,
       gameTime: gameTime.time,
     };

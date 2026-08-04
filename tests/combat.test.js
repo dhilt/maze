@@ -2,17 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createCharacter } from "../src/entities/character.js";
-import {
-  createMeatMonster,
-  MEAT_MONSTER_IMPACT_WEAR,
-} from "../src/entities/meat-monster.js";
+import { createMeatMonster } from "../src/entities/meat-monster.js";
 import { createCombat } from "../src/game/combat.js";
 import { createStatWear } from "../src/game/stat-wear.js";
 
-function monsterAt({ id = "monster-1", health = 20, attack = 7, defense = 5 } = {}) {
+function monsterAt({
+  id = "monster-1",
+  health = 20,
+  attack = 7,
+  defense = 5,
+  impactWear = 1,
+} = {}) {
   const monster = createMeatMonster({ id, col: 1, row: 0, facing: "left" });
   Object.assign(monster.stats, { health, attack, defense });
   Object.assign(monster.statsMax, { health, attack, defense });
+  monster.impactWear = impactWear;
   return monster;
 }
 
@@ -159,7 +163,6 @@ test("successful entity hits lightly wear the hero's Attack while misses do not"
     onPlayerStatChange: (change) => statChanges.push(change),
   });
 
-  assert.equal(MEAT_MONSTER_IMPACT_WEAR, 0.05);
   monster.col = 2;
   combat.queueImpact(heroHit());
   combat.resolve();
@@ -168,10 +171,10 @@ test("successful entity hits lightly wear the hero's Attack while misses do not"
   monster.col = 1;
   combat.queueImpact(heroHit());
   combat.resolve();
-  assert.equal(statWear.remaining("attack"), 0.99);
+  assert.equal(statWear.remaining("attack"), 0.85);
   assert.equal(character.stats.attack, 7);
 
-  statWear.apply("attack", 98);
+  statWear.apply("attack", 70);
   combat.queueImpact(heroHit());
   combat.resolve();
   assert.equal(character.stats.attack, 6);

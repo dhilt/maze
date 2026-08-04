@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCharacter, damage } from "../src/entities/character.js";
 import { createStatsPanel } from "../src/ui/stats-panel.js";
+
+function createPanelCharacter({ health = 4, healthMax = 13 } = {}) {
+  return {
+    name: "Test Hero",
+    stats: { health, attack: 3, defense: 2, morale: 5 },
+    statsMax: { health: healthMax, attack: 6, defense: 4, morale: 10 },
+  };
+}
 
 function createRoot() {
   const classes = new Set();
@@ -26,16 +33,16 @@ function occurrences(text, token) {
 test("removes both health bars when health reaches zero", () => {
   const root = createRoot();
   const panel = createStatsPanel(root);
-  const character = createCharacter({ stats: { health: 1 } });
+  const character = createPanelCharacter({ health: 1, healthMax: 13 });
 
   panel.update(character);
   assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 3);
   assert.equal(occurrences(root.innerHTML, 'class="stats-remainder"'), 2);
 
-  damage(character, 1);
+  character.stats.health = 0;
   panel.update(character);
 
-  assert.match(root.innerHTML, />0 \/ 20</);
+  assert.match(root.innerHTML, />0 \/ 13</);
   assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 2);
   assert.equal(occurrences(root.innerHTML, 'class="stats-remainder"'), 1);
 });
@@ -54,7 +61,7 @@ test("updates Health and Attack remainders independently", () => {
     },
   };
   const panel = createStatsPanel(root);
-  panel.update(createCharacter());
+  panel.update(createPanelCharacter());
 
   panel.setRemainder("health", 0.25);
   panel.setRemainder("attack", 0.7);
@@ -75,4 +82,20 @@ test("shows numeric stat values only in debug mode", () => {
 
   panel.setDebug(false);
   assert.equal(root.classList.contains("is-debug"), false);
+});
+
+test("renders Level as a green bar from one fifth through full", () => {
+  const root = createRoot();
+  const panel = createStatsPanel(root);
+  panel.setLevel({ number: 1, total: 5, progress: 0.2 });
+  panel.update(createPanelCharacter());
+
+  assert.match(root.innerHTML, />Level</);
+  assert.match(root.innerHTML, />1 \/ 5</);
+  assert.match(root.innerHTML, /width:20%/);
+  assert.match(root.innerHTML, /background:rgb\(104, 156, 112\)/);
+
+  panel.setLevel({ number: 5, total: 5, progress: 1 });
+  assert.match(root.innerHTML, />5 \/ 5</);
+  assert.match(root.innerHTML, /width:100%/);
 });

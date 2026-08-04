@@ -16,7 +16,13 @@ const DIRECTIONS = Object.freeze([
   Object.freeze({ id: "right", dx: 1, dy: 0 }),
 ]);
 
-export function spawnMeatMonsters({ world, player, count, seed }) {
+export function spawnMeatMonsters({
+  world,
+  player,
+  count,
+  seed,
+  idPrefix = "meat-monster",
+}) {
   if (!Number.isInteger(count) || count < 0) {
     throw new Error("Meat monster count must be a non-negative integer");
   }
@@ -31,7 +37,7 @@ export function spawnMeatMonsters({ world, player, count, seed }) {
   function createAt(cell) {
     const facing = DIRECTIONS[Math.floor(random() * DIRECTIONS.length)].id;
     return createMeatMonster({
-      id: `meat-monster-${monsters.length + 1}`,
+      id: `${idPrefix}-${monsters.length + 1}`,
       col: cell.x,
       row: cell.y,
       facing,
@@ -70,6 +76,7 @@ export function createEnemySystem({
   turnCost,
   attackCost,
   seed,
+  directionChangeChance = MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
   onImpact,
 }) {
   if (!Number.isFinite(stepCost) || stepCost <= 0) {
@@ -80,6 +87,13 @@ export function createEnemySystem({
   }
   if (!Number.isFinite(attackCost) || attackCost <= 0) {
     throw new Error("Enemy attackCost must be a positive number");
+  }
+  if (
+    !Number.isFinite(directionChangeChance) ||
+    directionChangeChance < 0 ||
+    directionChangeChance > 1
+  ) {
+    throw new Error("Enemy directionChangeChance must be a number in [0, 1]");
   }
   const random = createRandom(seed >>> 0);
 
@@ -177,7 +191,7 @@ export function createEnemySystem({
       ));
       const changesDirection = (
         alternatives.length > 0 &&
-        random() < MEAT_MONSTER_DIRECTION_CHANGE_CHANCE
+        random() < directionChangeChance
       );
       choices = changesDirection ? alternatives : [current];
     }

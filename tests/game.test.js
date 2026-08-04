@@ -1,9 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GAME_CONFIG } from "../src/config.js";
+import { createCharacter } from "../src/entities/character.js";
 import { createGame } from "../src/game/game.js";
 import { createWall } from "../src/world/maze.js";
+
+const TEST_CONFIG = Object.freeze({
+  cellSize: 16,
+  viewCols: 5,
+  viewRows: 5,
+  cameraMargin: 1,
+  gameTime: Object.freeze({ secondsPerUnit: 0.1, speed: 1 }),
+  actionCosts: Object.freeze({ step: 5, turn: 1, attack: 5, consume: 10 }),
+  enemies: Object.freeze({ meatMonster: Object.freeze({ stepCost: 8 }) }),
+  debug: false,
+  floorStyle: "stone",
+  worldSeed: 11,
+  wallDensity: 0,
+  wallSeed: 17,
+  baseWallHealth: 20,
+  baseWallDefense: 2,
+  wallImpactWear: 1,
+});
 
 function createContext() {
   return new Proxy({}, {
@@ -21,6 +39,28 @@ function keyEvent(type, code) {
     repeat: { value: false },
   });
   return event;
+}
+
+function createTestLevelBus(levels) {
+  let index = 0;
+  return {
+    advance() {
+      if (index >= levels.length - 1) return false;
+      index += 1;
+      return true;
+    },
+    get current() { return levels[index]; },
+    get isLast() { return index === levels.length - 1; },
+    get state() {
+      return {
+        number: index + 1,
+        total: levels.length,
+        progress: (index + 1) / levels.length,
+        isLast: index === levels.length - 1,
+        definition: levels[index],
+      };
+    },
+  };
 }
 
 function withGameEnvironment(run) {
@@ -73,8 +113,21 @@ function createTestGame({
   exitY = 0,
   worldRows = 1,
   monsterCount = 0,
+  levels,
 }) {
   const outcomes = [];
+  const testLevels = levels ?? [{
+    number: 1,
+    width: 5,
+    height: worldRows,
+    monsterCount,
+  }];
+  const character = createCharacter({
+    name: "Integration Hero",
+    stats: { health, attack: 7, defense: 5, morale: 8 },
+    statsMax: { health: 20, attack: 7, defense: 5, morale: 10 },
+    healthDrainSpeed: 100,
+  });
   const game = createGame({
     canvas: {
       width: 0,
@@ -86,22 +139,16 @@ function createTestGame({
       querySelector: () => null,
     },
     debugControl: { checked: false },
+    character,
+    levelBus: createTestLevelBus(testLevels),
     config: {
-      ...GAME_CONFIG,
-      worldCols: 5,
-      worldRows,
-      wallDensity: 0,
-      wallSeed: 1,
-      enemies: {
-        meatMonster: { ...GAME_CONFIG.enemies.meatMonster, count: monsterCount },
-      },
-      gameTime: { ...GAME_CONFIG.gameTime, speed },
+      ...TEST_CONFIG,
+      gameTime: { ...TEST_CONFIG.gameTime, speed },
     },
     onFinish: (outcome) => outcomes.push(outcome),
   });
 
   const state = game.getState();
-  state.character.stats.health = health;
   for (const cell of state.world.cells) cell.exit = false;
   state.world.at(exitX, exitY).exit = true;
   return { game, state, outcomes };
@@ -206,6 +253,14 @@ test("the hero can hit a passing monster without receiving a counterattack", () 
     monster.col = 2;
     monster.row = 0;
     monster.facing = "left";
+    monster.move = {
+      kind: "step",
+      dx: -1,
+      dy: 0,
+      elapsed: 0,
+      timeCost: TEST_CONFIG.enemies.meatMonster.stepCost,
+      facing: "left",
+    };
     Object.assign(monster.stats, { health: 20, attack: 7, defense: 5 });
 
     environment.target.dispatchEvent(keyEvent("keydown", "Space"));
@@ -255,6 +310,49 @@ test("a living hero still finishes when landing on the exit", () => {
     assert.equal(state.character.stats.health, 20);
     assert.equal(state.player.col, 3);
     assert.deepEqual(outcomes, ["escaped"]);
+  });
+});
+
+test("a portal advances the level while only the final portal finishes the run", () => {
+  withGameEnvironment((environment) => {
+    const characterLevels = [
+      { number: 1, width: 5, height: 1, monsterCount: 1 },
+      { number: 2, width: 10, height: 1, monsterCount: 3 },
+    ];
+    const { game, state: first, outcomes } = createTestGame({
+      speed: 1,
+      health: 13,
+      exitX: 2,
+      levels: characterLevels,
+    });
+    const character = first.character;
+
+    game.start();
+    environment.runFrame();
+
+    const second = game.getState();
+    assert.equal(second.level.number, 2);
+    assert.equal(second.level.isLast, true);
+    assert.deepEqual([second.world.width, second.world.height], [10, 1]);
+    assert.equal(second.monsters.length, 3);
+    assert.equal(second.monsterHistory.length, 1);
+    assert.ok(second.monsterHistory[0].id.startsWith("level-1:"));
+    assert.ok(second.monsters.every(({ id }) => id.startsWith("level-2:")));
+    assert.equal(
+      new Set(second.allMonsters.map(({ id }) => id)).size,
+      second.allMonsters.length,
+    );
+    assert.equal(second.character, character);
+    assert.equal(second.character.stats.health, 13);
+    assert.deepEqual(outcomes, [], "an intermediate portal must not finish the run");
+
+    for (const cell of second.world.cells) cell.exit = false;
+    second.world.at(second.player.col, second.player.row).exit = true;
+    const timeBeforeFinalPortal = second.gameTime;
+    environment.runFrame(200);
+
+    assert.deepEqual(outcomes, ["escaped"]);
+    assert.ok(game.getState().gameTime > timeBeforeFinalPortal);
   });
 });
 

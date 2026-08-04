@@ -161,7 +161,7 @@ test("a monster health bar stays hidden outside side adjacency", () => {
   assert.deepEqual(ctx.fills, []);
 });
 
-test("a visible health bar relaxes for one real second after adjacency ends", () => {
+test("a visible health bar relaxes for the configured delay after adjacency ends", () => {
   const ctx = createContext();
   const monster = {
     id: "m1",

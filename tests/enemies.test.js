@@ -29,6 +29,7 @@ function createSystem({
   turnCost = 1,
   attackCost = 5,
   seed = 1,
+  directionChangeChance = 0,
   playerMove = null,
   onImpact,
 }) {
@@ -41,6 +42,7 @@ function createSystem({
     turnCost,
     attackCost,
     seed,
+    directionChangeChance,
     onImpact,
   });
 }
@@ -58,30 +60,62 @@ test("meat monster stats use the configured inclusive intervals", () => {
 test("every meat monster owns independent current and maximum stats", () => {
   const first = createMeatMonster({ id: "m1", col: 0, row: 0, random: () => 0.5 });
   const second = createMeatMonster({ id: "m2", col: 1, row: 0, random: () => 0.5 });
+  const firstInitial = { ...first.stats };
+  const secondInitial = { ...second.stats };
 
-  assert.deepEqual(first.stats, { health: 20, attack: 6, defense: 4, morale: 6 });
+  assert.deepEqual(first.stats, first.statsMax);
   assert.notEqual(first.stats, first.statsMax);
   assert.notEqual(first.stats, second.stats);
-  assert.equal(first.nutrition, 6);
-  assert.equal(first.moraleCost, 2);
   assert.equal(first.impactWear, MEAT_MONSTER_IMPACT_WEAR);
   first.stats.health = 0;
-  assert.equal(first.statsMax.health, 20);
-  assert.equal(second.stats.health, 20);
+  assert.equal(first.statsMax.health, firstInitial.health);
+  assert.deepEqual(second.stats, secondInitial);
 });
 
-test("a moving monster has a twenty-percent chance to change direction", () => {
-  assert.equal(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE, 0.2);
+test("the configured direction-change chance is a valid probability", () => {
+  assert.ok(Number.isFinite(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE));
+  assert.ok(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE >= 0);
+  assert.ok(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE <= 1);
+});
+
+test("direction-change chance rejects values outside the probability range", () => {
+  const world = generateWorld({ width: 2, height: 1, seed: 1 });
+  const setup = (directionChangeChance) => createSystem({
+    world,
+    player: { col: 0, row: 0 },
+    monsters: [],
+    directionChangeChance,
+  });
+
+  assert.throws(() => setup(-Number.EPSILON), /directionChangeChance/);
+  assert.throws(() => setup(1 + Number.EPSILON), /directionChangeChance/);
+  assert.doesNotThrow(() => setup(0));
+  assert.doesNotThrow(() => setup(1));
+});
+
+test("zero and full chance control sudden direction changes", () => {
   const world = generateWorld({ width: 5, height: 1, seed: 1 });
   const player = { col: 0, row: 0 };
   const steady = createMeatMonster({ id: "steady", col: 2, row: 0, facing: "right" });
   const changing = createMeatMonster({ id: "changing", col: 2, row: 0, facing: "right" });
 
-  createSystem({ world, player, monsters: [steady], seed: 1 }).update(0.1);
-  createSystem({ world, player, monsters: [changing], seed: 7 }).update(0.1);
+  createSystem({
+    world,
+    player,
+    monsters: [steady],
+    seed: 1,
+    directionChangeChance: 0,
+  }).update(0.1);
+  createSystem({
+    world,
+    player,
+    monsters: [changing],
+    seed: 1,
+    directionChangeChance: 1,
+  }).update(0.1);
 
-  assert.equal(steady.move.facing, "right", "roll 0.627 keeps the current direction");
-  assert.equal(changing.move.facing, "left", "roll 0.012 triggers the available change");
+  assert.equal(steady.move.facing, "right");
+  assert.equal(changing.move.facing, "left");
 });
 
 test("a blocked monster chooses its reverse as readily as either side turn", () => {

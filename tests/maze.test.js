@@ -44,9 +44,14 @@ test("maze generation requires an explicit wall combat profile", () => {
 });
 
 test("a wall may have zero Defense without losing its combat shape", () => {
-  assert.deepEqual(createWall({ health: 10, defense: 0, impactWear: 0.5 }), {
+  assert.deepEqual(createWall({
+    health: 10,
+    defense: 0,
+    impactWear: 0.5,
+    material: "test-stone",
+  }), {
     kind: "wall",
-    material: "stone",
+    material: "test-stone",
     stats: { health: 10, defense: 0 },
     statsMax: { health: 10, defense: 0 },
     impactWear: 0.5,
@@ -103,8 +108,18 @@ test("Infinity represents indestructible perimeter and special walls", () => {
 
 test("both neighbours resolve and damage the same canonical wall object", () => {
   const world = generateWorld({ width: 3, height: 3, seed: 1 });
-  world.at(1, 1).wallRight = createWall({ health: 2, defense: 2, impactWear: 1 });
-  world.at(1, 1).wallDown = createWall({ health: 2, defense: 2, impactWear: 1 });
+  world.at(1, 1).wallRight = createWall({
+    health: 2,
+    defense: 2,
+    impactWear: 1,
+    material: "right-test-stone",
+  });
+  world.at(1, 1).wallDown = createWall({
+    health: 2,
+    defense: 2,
+    impactWear: 1,
+    material: "down-test-stone",
+  });
 
   assert.equal(getWall(world, 1, 1, 1, 0), getWall(world, 2, 1, -1, 0));
   assert.deepEqual(damageWall(world, 2, 1, -1, 0), {
@@ -131,7 +146,7 @@ test("both neighbours resolve and damage the same canonical wall object", () => 
     kind: "wall-rubble",
     layer: "background",
     placement: { type: "edge", edge: "right" },
-    material: "stone",
+    material: "right-test-stone",
   });
   assert.equal(Number.isInteger(rubble.visualSeed), true);
   assert.deepEqual(world.at(2, 1).objects, [], "rubble stays on the canonical owner cell");
@@ -142,6 +157,7 @@ test("both neighbours resolve and damage the same canonical wall object", () => 
   damageWall(world, 1, 2, 0, -1);
   assert.equal(world.at(1, 1).wallDown, null);
   assert.deepEqual(world.at(1, 1).objects[1].placement, { type: "edge", edge: "down" });
+  assert.equal(world.at(1, 1).objects[1].material, "down-test-stone");
 });
 
 test("maze generation leaves no fully enclosed cells", () => {

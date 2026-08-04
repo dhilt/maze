@@ -53,7 +53,7 @@ test("the committed meat monster walk set contains 64px PNG files", async () => 
   }
 });
 
-test("the committed directional attacks contain eight 64px PNG files", async () => {
+test("the committed directional attack set contains the configured 64px PNG files", async () => {
   for (const direction of DIRECTIONS) {
     for (let frame = 0; frame < MEAT_MONSTER_ATTACK_FRAME_COUNT; frame += 1) {
       const file = new URL(
@@ -73,32 +73,34 @@ test("the meat monster loader uses deployable asset URLs", () => {
   globalThis.Image = class FakeImage {};
   try {
     const sprites = loadMeatMonsterSprites();
-    assert.equal(sprites.walk.down.length, 4);
-    assert.equal(sprites.walk.left.length, 4);
-    assert.equal(sprites.attack.down.length, 8);
-    assert.equal(sprites.attack.up.length, 8);
-    assert.equal(sprites.attack.left.length, 8);
-    assert.equal(sprites.attack.right.length, 8);
+    const lastWalkFrame = MEAT_MONSTER_WALK_FRAME_COUNT - 1;
+    const lastAttackFrame = MEAT_MONSTER_ATTACK_FRAME_COUNT - 1;
+    assert.equal(sprites.walk.down.length, MEAT_MONSTER_WALK_FRAME_COUNT);
+    assert.equal(sprites.walk.left.length, MEAT_MONSTER_WALK_FRAME_COUNT);
+    assert.equal(sprites.attack.down.length, MEAT_MONSTER_ATTACK_FRAME_COUNT);
+    assert.equal(sprites.attack.up.length, MEAT_MONSTER_ATTACK_FRAME_COUNT);
+    assert.equal(sprites.attack.left.length, MEAT_MONSTER_ATTACK_FRAME_COUNT);
+    assert.equal(sprites.attack.right.length, MEAT_MONSTER_ATTACK_FRAME_COUNT);
     assert.match(
-      sprites.walk.right[3].src,
-      /^\.\/assets\/enemies\/meat-monster\/walk\/right\/3\.png\?v=/,
+      sprites.walk.right[lastWalkFrame].src,
+      new RegExp(`^\\./assets/enemies/meat-monster/walk/right/${lastWalkFrame}\\.png\\?v=`),
     );
-    assert.equal(sprites.walk.right[3].src.includes("temp"), false);
+    assert.equal(sprites.walk.right[lastWalkFrame].src.includes("temp"), false);
     assert.match(
-      sprites.attack.down[7].src,
-      /^\.\/assets\/enemies\/meat-monster\/attack\/down\/7\.png\?v=/,
-    );
-    assert.match(
-      sprites.attack.up[7].src,
-      /^\.\/assets\/enemies\/meat-monster\/attack\/up\/7\.png\?v=/,
+      sprites.attack.down[lastAttackFrame].src,
+      new RegExp(`^\\./assets/enemies/meat-monster/attack/down/${lastAttackFrame}\\.png\\?v=`),
     );
     assert.match(
-      sprites.attack.left[7].src,
-      /^\.\/assets\/enemies\/meat-monster\/attack\/left\/7\.png\?v=/,
+      sprites.attack.up[lastAttackFrame].src,
+      new RegExp(`^\\./assets/enemies/meat-monster/attack/up/${lastAttackFrame}\\.png\\?v=`),
     );
     assert.match(
-      sprites.attack.right[7].src,
-      /^\.\/assets\/enemies\/meat-monster\/attack\/right\/7\.png\?v=/,
+      sprites.attack.left[lastAttackFrame].src,
+      new RegExp(`^\\./assets/enemies/meat-monster/attack/left/${lastAttackFrame}\\.png\\?v=`),
+    );
+    assert.match(
+      sprites.attack.right[lastAttackFrame].src,
+      new RegExp(`^\\./assets/enemies/meat-monster/attack/right/${lastAttackFrame}\\.png\\?v=`),
     );
   } finally {
     if (PreviousImage === undefined) delete globalThis.Image;

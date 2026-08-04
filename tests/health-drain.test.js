@@ -5,7 +5,10 @@ import { createCharacter } from "../src/entities/character.js";
 import { createHealthDrain } from "../src/game/health-drain.js";
 
 test("loses 1 health per interval and carries the remainder", () => {
-  const character = createCharacter({ stats: { health: 20 } });
+  const character = createCharacter({
+    stats: { health: 20 },
+    healthDrainSpeed: 100,
+  });
   const drain = createHealthDrain({ character });
 
   assert.equal(drain.advance(60), 0); // accumulates, no tick yet
@@ -16,6 +19,9 @@ test("loses 1 health per interval and carries the remainder", () => {
 
   assert.equal(drain.advance(250), 2); // 20 + 250 = 270 → two ticks, 70 carried
   assert.equal(character.stats.health, 17);
+
+  assert.equal(drain.advance(30), 1); // the carried 70 reaches the next boundary
+  assert.equal(character.stats.health, 16);
 });
 
 test("uses the character health drain speed", () => {
@@ -43,7 +49,10 @@ test("a non-positive health drain speed disables the drain", () => {
 
 test("remaining reports the fraction of the interval left and resets on a tick", () => {
   const near = (a, b) => Math.abs(a - b) < 1e-9;
-  const character = createCharacter({ stats: { health: 20 } });
+  const character = createCharacter({
+    stats: { health: 20 },
+    healthDrainSpeed: 100,
+  });
   const drain = createHealthDrain({ character });
 
   assert.ok(near(drain.remaining, 1)); // full right after start

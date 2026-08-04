@@ -48,15 +48,16 @@ test("the knight loader uses deployable asset URLs instead of temp output", () =
   globalThis.Image = class FakeImage {};
   try {
     const sprites = loadKnightSprites();
+    const lastWalkFrame = KNIGHT_FRAME_COUNTS.walk - 1;
 
-    assert.equal(sprites.idle.down.length, 4);
-    assert.equal(sprites.walk.left.length, 4);
-    assert.equal(sprites.attack.right.length, 9);
+    assert.equal(sprites.idle.down.length, KNIGHT_FRAME_COUNTS.idle);
+    assert.equal(sprites.walk.left.length, KNIGHT_FRAME_COUNTS.walk);
+    assert.equal(sprites.attack.right.length, KNIGHT_FRAME_COUNTS.attack);
     assert.match(
-      sprites.walk.right[3].src,
-      /^\.\/assets\/characters\/knight\/walk\/right\/3\.png\?v=/,
+      sprites.walk.right[lastWalkFrame].src,
+      new RegExp(`^\\./assets/characters/knight/walk/right/${lastWalkFrame}\\.png\\?v=`),
     );
-    assert.equal(sprites.walk.right[3].src.includes("temp"), false);
+    assert.equal(sprites.walk.right[lastWalkFrame].src.includes("temp"), false);
   } finally {
     if (PreviousImage === undefined) delete globalThis.Image;
     else globalThis.Image = PreviousImage;

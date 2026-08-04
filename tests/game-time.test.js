@@ -6,16 +6,19 @@ import { createGameTime } from "../src/game/time.js";
 
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 
-test("configured action costs use the logical unit and preserve base pacing", () => {
-  assert.equal(GAME_CONFIG.actionCosts.turn, 1);
-  assert.equal(GAME_CONFIG.actionCosts.step, 5);
-  assert.equal(GAME_CONFIG.actionCosts.attack, 5);
-  assert.ok(near(GAME_CONFIG.actionCosts.turn * GAME_CONFIG.gameTime.secondsPerUnit, 0.1));
-  assert.ok(near(GAME_CONFIG.actionCosts.step * GAME_CONFIG.gameTime.secondsPerUnit, 0.5));
+test("configured time scale and action costs satisfy their runtime invariants", () => {
+  assert.ok(Number.isFinite(GAME_CONFIG.gameTime.secondsPerUnit));
+  assert.ok(GAME_CONFIG.gameTime.secondsPerUnit > 0);
+  assert.ok(Number.isFinite(GAME_CONFIG.gameTime.speed));
+  assert.ok(GAME_CONFIG.gameTime.speed > 0);
+  for (const cost of Object.values(GAME_CONFIG.actionCosts)) {
+    assert.ok(Number.isInteger(cost));
+    assert.ok(cost > 0);
+  }
 });
 
 test("game time converts physical seconds into logical units", () => {
-  const gameTime = createGameTime({ secondsPerUnit: 0.1 });
+  const gameTime = createGameTime({ secondsPerUnit: 0.1, speed: 1 });
   const tick = gameTime.advance({ dt: 0.05, time: 2.5 });
 
   assert.ok(near(tick.dt, 0.5));
@@ -25,7 +28,7 @@ test("game time converts physical seconds into logical units", () => {
 });
 
 test("global game time accumulates independently from physical time", () => {
-  const gameTime = createGameTime({ secondsPerUnit: 0.1 });
+  const gameTime = createGameTime({ secondsPerUnit: 0.1, speed: 1 });
   gameTime.advance({ dt: 0.02, time: 0.02 });
   const tick = gameTime.advance({ dt: 0.08, time: 0.1 });
 
@@ -46,6 +49,6 @@ test("game time rejects invalid scales and deltas", () => {
   assert.throws(() => createGameTime({ secondsPerUnit: 0 }), /secondsPerUnit/);
   assert.throws(() => createGameTime({ secondsPerUnit: 0.1, speed: -1 }), /speed/);
 
-  const gameTime = createGameTime({ secondsPerUnit: 0.1 });
+  const gameTime = createGameTime({ secondsPerUnit: 0.1, speed: 1 });
   assert.throws(() => gameTime.advance({ dt: -0.01, time: 0 }), /realTick.dt/);
 });

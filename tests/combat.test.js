@@ -11,12 +11,13 @@ function monsterAt({
   health = 20,
   attack = 7,
   defense = 5,
-  morale = 3,
+  moraleReward = 3,
   impactWear = 1,
 } = {}) {
   const monster = createMeatMonster({ id, col: 1, row: 0, facing: "left" });
-  Object.assign(monster.stats, { health, attack, defense, morale });
-  Object.assign(monster.statsMax, { health, attack, defense, morale });
+  Object.assign(monster.stats, { health, attack, defense });
+  Object.assign(monster.statsMax, { health, attack, defense });
+  monster.moraleReward = moraleReward;
   monster.impactWear = impactWear;
   return monster;
 }
@@ -26,14 +27,14 @@ function duel({
   heroMorale = 4,
   heroMoraleMax = 10,
   monsterHealth = 20,
-  monsterMorale = 3,
+  monsterMoraleReward = 3,
 } = {}) {
   const player = { col: 0, row: 0 };
   const character = createCharacter({
     stats: { health: heroHealth, attack: 7, defense: 5, morale: heroMorale },
     statsMax: { health: heroHealth, morale: heroMoraleMax },
   });
-  const monster = monsterAt({ health: monsterHealth, morale: monsterMorale });
+  const monster = monsterAt({ health: monsterHealth, moraleReward: monsterMoraleReward });
   const monsters = [monster];
   const combat = createCombat({ player, character, monsters });
   return { player, character, monster, monsters, combat };
@@ -76,12 +77,12 @@ test("mutual death is possible when contacts happen at the same time", () => {
   assert.equal(monsters[0].stats.health, 0);
 });
 
-test("a player kill restores the defeated monster's morale value", () => {
+test("a player kill grants the defeated monster's morale reward", () => {
   const { player, character, monster, monsters } = duel({
     heroMorale: 4,
     heroMoraleMax: 10,
     monsterHealth: 2,
-    monsterMorale: 3,
+    monsterMoraleReward: 3,
   });
   const changes = [];
   const combat = createCombat({
@@ -104,7 +105,7 @@ test("kill morale is capped by the hero's maximum and ignores unrelated deaths",
     heroMorale: 9,
     heroMoraleMax: 10,
     monsterHealth: 2,
-    monsterMorale: 3,
+    monsterMoraleReward: 3,
   });
   const changes = [];
   const combat = createCombat({
@@ -119,7 +120,7 @@ test("kill morale is capped by the hero's maximum and ignores unrelated deaths",
   assert.equal(character.stats.morale, 10);
   assert.deepEqual(changes, [{ stat: "morale", gained: 1, sourceId: monster.id }]);
 
-  const unrelated = monsterAt({ id: "unrelated", health: 0, morale: 9 });
+  const unrelated = monsterAt({ id: "unrelated", health: 0, moraleReward: 9 });
   monsters.push(unrelated);
   combat.resolve();
   assert.equal(character.stats.morale, 10);

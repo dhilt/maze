@@ -1,14 +1,14 @@
 import { createActionCosts } from "../game/actions/action-costs.js";
 
 const DEFAULT_STATS = Object.freeze({
-  health: 20,
+  health: 30,
   attack: 7,
   defense: 5,
   morale: 8,
 });
 
 const DEFAULT_STATS_MAX = Object.freeze({
-  health: 20,
+  health: 30,
   attack: 7,
   defense: 5,
   morale: 10,
@@ -17,7 +17,7 @@ const DEFAULT_STATS_MAX = Object.freeze({
 const DEFAULT_ACTION_COSTS = Object.freeze({
   step: 10,
   turn: 1,
-  attack: 10,
+  attack: 9,
   consume: 20,
 });
 

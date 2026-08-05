@@ -147,7 +147,7 @@ export function createCombat({
   }
 
   function rewardMorale(monster) {
-    const reward = monster.stats.morale;
+    const reward = monster.moraleReward;
     if (!Number.isFinite(reward) || reward <= 0) return 0;
     const before = character.stats.morale;
     character.stats.morale = Math.min(character.statsMax.morale, before + reward);

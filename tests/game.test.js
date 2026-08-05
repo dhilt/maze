@@ -307,8 +307,8 @@ test("the hero consumes a linked corpse with E after spending action time", () =
     monster.col = state.player.col;
     monster.row = state.player.row;
     monster.stats.health = 0;
-    monster.nutrition = 6;
-    monster.moraleCost = 2;
+    monster.carcass.nutrition = 6;
+    monster.carcass.moraleCost = 2;
     state.character.stats.morale = 8;
     const cell = state.world.at(state.player.col, state.player.row);
 

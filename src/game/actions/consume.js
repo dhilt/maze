@@ -29,17 +29,18 @@ export function createConsume({
     const corpse = cell.objects[corpseIndex];
     const entity = findEntityById(corpse.entityId);
     if (!entity) return;
-    if (!Number.isFinite(entity.nutrition) || entity.nutrition < 0) {
-      throw new Error("Consumed entity nutrition must be a non-negative number");
+    if (!Number.isFinite(entity.carcass?.nutrition) || entity.carcass.nutrition < 0) {
+      throw new Error("Consumed entity carcass.nutrition must be a non-negative number");
     }
-    if (!Number.isFinite(entity.moraleCost) || entity.moraleCost < 0) {
-      throw new Error("Consumed entity moraleCost must be a non-negative number");
+    if (!Number.isFinite(entity.carcass?.moraleCost) || entity.carcass.moraleCost < 0) {
+      throw new Error("Consumed entity carcass.moraleCost must be a non-negative number");
     }
+    if (character.stats.morale < entity.carcass.moraleCost) return;
 
     const previousHealth = character.stats.health;
     const previousMorale = character.stats.morale;
-    heal(character, entity.nutrition);
-    character.stats.morale = Math.max(0, previousMorale - entity.moraleCost);
+    heal(character, entity.carcass.nutrition);
+    character.stats.morale = previousMorale - entity.carcass.moraleCost;
     cell.objects.splice(corpseIndex, 1);
     onStatChange?.({
       healthGained: character.stats.health - previousHealth,

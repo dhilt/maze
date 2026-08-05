@@ -6,22 +6,20 @@ export const MEAT_MONSTER_KIND = "meat-monster";
 export const MEAT_MONSTER_DIRECTION_CHANGE_CHANCE = 0.2;
 export const MEAT_MONSTER_MIN_NUTRITION = 4;
 export const MEAT_MONSTER_MAX_NUTRITION = 7;
-export const MEAT_MONSTER_MIN_MORALE_COST = 1;
-export const MEAT_MONSTER_MAX_MORALE_COST = 3;
+export const MEAT_MONSTER_MORALE_COST = 3;
+export const MEAT_MONSTER_MORALE_REWARD = 1;
 export const MEAT_MONSTER_IMPACT_WEAR = 0.05;
 
 export const MEAT_MONSTER_MIN_STATS = Object.freeze({
   health: 17,
   attack: 5,
   defense: 3,
-  morale: 1,
 });
 
 export const MEAT_MONSTER_MAX_STATS = Object.freeze({
   health: 23,
   attack: 7,
   defense: 5,
-  morale: 1,
 });
 
 const DEFAULT_ACTION_COSTS = Object.freeze({
@@ -78,18 +76,16 @@ export function createMeatMonster({
     stats: concreteStats,
     statsMax: { ...concreteStats },
     actionCosts: createActionCosts(DEFAULT_ACTION_COSTS, actionCosts),
-    nutrition: randomInteger(
-      random,
-      MEAT_MONSTER_MIN_NUTRITION,
-      MEAT_MONSTER_MAX_NUTRITION,
-      "nutrition",
-    ),
-    moraleCost: randomInteger(
-      random,
-      MEAT_MONSTER_MIN_MORALE_COST,
-      MEAT_MONSTER_MAX_MORALE_COST,
-      "morale cost",
-    ),
+    carcass: {
+      nutrition: randomInteger(
+        random,
+        MEAT_MONSTER_MIN_NUTRITION,
+        MEAT_MONSTER_MAX_NUTRITION,
+        "nutrition",
+      ),
+      moraleCost: MEAT_MONSTER_MORALE_COST,
+    },
+    moraleReward: MEAT_MONSTER_MORALE_REWARD,
     impactWear: MEAT_MONSTER_IMPACT_WEAR,
     move: null,
     attack: null,

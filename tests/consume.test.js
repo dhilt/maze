@@ -7,7 +7,7 @@ import { generateWorld } from "../src/world/world.js";
 
 function setup({
   health = 15,
-  morale = 2,
+  morale = 3,
   nutrition = 7,
   moraleCost = 3,
   entityExists = true,
@@ -17,7 +17,7 @@ function setup({
     stats: { health, morale },
     statsMax: { health: 20, morale: 10 },
   });
-  const monster = { id: "m1", nutrition, moraleCost };
+  const monster = { id: "m1", carcass: { nutrition, moraleCost } };
   const corpse = {
     id: "corpse-m1",
     kind: "corpse",
@@ -45,19 +45,35 @@ test("consume applies nutrition and morale cost only when the action completes",
 
   assert.equal(consume.update(9), 0);
   assert.equal(character.stats.health, 15);
-  assert.equal(character.stats.morale, 2);
+  assert.equal(character.stats.morale, 3);
   assert.equal(world.at(0, 0).objects.length, 1);
 
   assert.equal(consume.update(2), 1);
   assert.equal(character.stats.health, 20, "nutrition is capped by maximum health");
-  assert.equal(character.stats.morale, 0, "the last meal may reduce morale to zero");
+  assert.equal(character.stats.morale, 0);
   assert.deepEqual(world.at(0, 0).objects, []);
-  assert.deepEqual(changes, [{ healthGained: 5, moraleLost: 2, entityId: "m1" }]);
+  assert.deepEqual(changes, [{ healthGained: 5, moraleLost: 3, entityId: "m1" }]);
   assert.equal(consume.active, false);
 });
 
 test("consume leaves state unchanged when its linked entity no longer exists", () => {
   const { world, character, changes, consume } = setup({ entityExists: false });
+  consume.begin({
+    kind: "consume",
+    timeCost: 10,
+    target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
+  });
+
+  consume.update(10);
+
+  assert.equal(character.stats.health, 15);
+  assert.equal(character.stats.morale, 3);
+  assert.equal(world.at(0, 0).objects.length, 1);
+  assert.deepEqual(changes, []);
+});
+
+test("consume is cancelled at completion if morale no longer covers its cost", () => {
+  const { world, character, changes, consume } = setup({ morale: 2, moraleCost: 3 });
   consume.begin({
     kind: "consume",
     timeCost: 10,

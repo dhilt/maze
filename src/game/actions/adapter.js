@@ -20,6 +20,7 @@ export function createActionAdapter({
   player,
   character,
   findEntryBlocker = () => null,
+  findEntityById = () => null,
 }) {
   if (!character?.actionCosts) {
     throw new Error("Action adapter requires character action costs");
@@ -38,21 +39,33 @@ export function createActionAdapter({
   function adapt(desired) {
     if (desired === "consume") {
       const cell = world.at(player.col, player.row);
-      const corpse = cell?.objects.find(({ kind }) => kind === CORPSE_KIND) ?? null;
-      if (
-        corpse === null ||
-        !character ||
-        character.stats.morale <= 0 ||
-        character.stats.health >= character.statsMax.health
-      ) return null;
+      if (!character || character.stats.health >= character.statsMax.health) return null;
+
+      // Several monsters may die on the same cell. Pick the first carcass the
+      // hero can actually afford instead of letting another corpse mask it.
+      let target = null;
+      for (const corpse of cell?.objects ?? []) {
+        if (corpse.kind !== CORPSE_KIND) continue;
+        const entity = findEntityById(corpse.entityId);
+        if (entity === null) continue;
+        const moraleCost = entity.carcass?.moraleCost;
+        if (!Number.isFinite(moraleCost) || moraleCost < 0) {
+          throw new Error("Consumed entity carcass.moraleCost must be a non-negative number");
+        }
+        if (character.stats.morale >= moraleCost) {
+          target = { corpse, entity };
+          break;
+        }
+      }
+      if (target === null) return null;
       return {
         kind: "consume",
         timeCost: character.actionCosts.consume,
         target: {
           col: player.col,
           row: player.row,
-          corpseId: corpse.id,
-          entityId: corpse.entityId,
+          corpseId: target.corpse.id,
+          entityId: target.entity.id,
         },
       };
     }

@@ -8,12 +8,13 @@ import { generateWorld } from "../src/world/world.js";
 
 const COSTS = { step: 5, turn: 1, attack: 5, consume: 10 };
 
-function makeAdapter(world, player, findEntryBlocker, character) {
+function makeAdapter(world, player, findEntryBlocker, character, findEntityById) {
   return createActionAdapter({
     world,
     player,
     character: character ?? createCharacter({ actionCosts: COSTS }),
     findEntryBlocker,
+    findEntityById,
   });
 }
 
@@ -143,13 +144,14 @@ test("attack facing the world perimeter resolves against an indestructible wall"
   assert.deepEqual(a.target, { x: 0, y: 1, dx: -1, dy: 0 });
 });
 
-test("consume resolves only for an injured hero with morale standing on a corpse", () => {
+test("consume resolves only for an injured hero with enough morale standing on a corpse", () => {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
   const player = { col: 0, row: 0, facing: "down" };
   const character = createCharacter({
-    stats: { health: 15, morale: 1 },
+    stats: { health: 15, morale: 3 },
     actionCosts: COSTS,
   });
+  const monster = { id: "m1", carcass: { moraleCost: 3 } };
   const corpse = {
     id: "corpse-m1",
     kind: "corpse",
@@ -157,7 +159,13 @@ test("consume resolves only for an injured hero with morale standing on a corpse
     entityId: "m1",
   };
   world.at(0, 0).objects.push(corpse);
-  const adapter = makeAdapter(world, player, undefined, character);
+  const adapter = makeAdapter(
+    world,
+    player,
+    undefined,
+    character,
+    (id) => (id === monster.id ? monster : null),
+  );
 
   assert.deepEqual(adapter.adapt("consume"), {
     kind: "consume",
@@ -165,12 +173,43 @@ test("consume resolves only for an injured hero with morale standing on a corpse
     target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
   });
 
-  character.stats.morale = 0;
+  character.stats.morale = 2;
   assert.equal(adapter.adapt("consume"), null);
-  character.stats.morale = 1;
+  character.stats.morale = 3;
   character.stats.health = character.statsMax.health;
   assert.equal(adapter.adapt("consume"), null);
   character.stats.health = 15;
   world.at(0, 0).objects.length = 0;
   assert.equal(adapter.adapt("consume"), null);
+});
+
+test("consume selects an affordable carcass when several corpses share a cell", () => {
+  const world = generateWorld({ width: 1, height: 1, seed: 1 });
+  const player = { col: 0, row: 0, facing: "down" };
+  const character = createCharacter({
+    stats: { health: 15, morale: 3 },
+    actionCosts: COSTS,
+  });
+  const monsters = [
+    { id: "expensive", carcass: { moraleCost: 4 } },
+    { id: "affordable", carcass: { moraleCost: 3 } },
+  ];
+  world.at(0, 0).objects.push(
+    { id: "corpse-expensive", kind: "corpse", entityId: "expensive" },
+    { id: "corpse-affordable", kind: "corpse", entityId: "affordable" },
+  );
+  const adapter = makeAdapter(
+    world,
+    player,
+    undefined,
+    character,
+    (id) => monsters.find((monster) => monster.id === id) ?? null,
+  );
+
+  assert.deepEqual(adapter.adapt("consume").target, {
+    col: 0,
+    row: 0,
+    corpseId: "corpse-affordable",
+    entityId: "affordable",
+  });
 });

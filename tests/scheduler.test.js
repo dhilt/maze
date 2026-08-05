@@ -114,6 +114,33 @@ test("FIFO keeps the first next action; overflow is dropped", () => {
   assert.equal(attack.log.length, 0);
 });
 
+test("an explicit consume replaces a full buffered slot without interrupting the active action", () => {
+  const movement = makeExecutor();
+  const consume = makeExecutor();
+  const input = makeInput();
+  const adapter = makeAdapter(resolveByKind({ consume: consumeOf }));
+  const scheduler = createActionScheduler({
+    adapter,
+    movement,
+    attack: makeExecutor(),
+    consume,
+    input,
+  });
+
+  input.queue("right");
+  scheduler.update(0.5);
+  input.queue("up", "consume");
+  scheduler.update(0.5);
+
+  assert.equal(scheduler.activeId, "right");
+  assert.equal(scheduler.buffered, "consume");
+  assert.equal(consume.log.length, 0);
+
+  scheduler.update(4);
+  assert.equal(scheduler.activeId, "consume");
+  assert.equal(consume.log.length, 1);
+});
+
 test("one repeated attack can be buffered for a durable target", () => {
   const movement = makeExecutor();
   const attack = makeExecutor();

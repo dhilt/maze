@@ -6,12 +6,12 @@ import {
   createMeatMonster,
   createMeatMonsterStats,
   MEAT_MONSTER_IMPACT_WEAR,
-  MEAT_MONSTER_MAX_MORALE_COST,
   MEAT_MONSTER_MAX_NUTRITION,
   MEAT_MONSTER_MAX_STATS,
-  MEAT_MONSTER_MIN_MORALE_COST,
   MEAT_MONSTER_MIN_NUTRITION,
   MEAT_MONSTER_MIN_STATS,
+  MEAT_MONSTER_MORALE_COST,
+  MEAT_MONSTER_MORALE_REWARD,
 } from "../src/entities/meat-monster.js";
 import { createActionAdapter } from "../src/game/actions/adapter.js";
 import { ATTACK_CONTACT_PROGRESS } from "../src/game/actions/attack-timing.js";
@@ -50,8 +50,6 @@ test("meat monster stats use the configured inclusive intervals", () => {
     assert.equal(minimum[name], min);
     assert.equal(maximum[name], MEAT_MONSTER_MAX_STATS[name]);
   }
-  assert.equal(MEAT_MONSTER_MIN_STATS.morale, MEAT_MONSTER_MAX_STATS.morale);
-  assert.ok(MEAT_MONSTER_MIN_STATS.morale > 0);
 });
 
 test("every meat monster owns independent stats and action costs", () => {
@@ -155,10 +153,10 @@ test("meat monster spawning is deterministic, unique, and avoids the hero", () =
     row,
     facing,
     stats,
-    nutrition,
-    moraleCost,
+    carcass,
+    moraleReward,
   }) => ({
-    id, col, row, facing, stats, nutrition, moraleCost,
+    id, col, row, facing, stats, carcass, moraleReward,
   }));
 
   assert.deepEqual(snapshot(first), snapshot(second));
@@ -170,10 +168,10 @@ test("meat monster spawning is deterministic, unique, and avoids the hero", () =
       assert.ok(monster.stats[name] >= min);
       assert.ok(monster.stats[name] <= MEAT_MONSTER_MAX_STATS[name]);
     }
-    assert.ok(monster.nutrition >= MEAT_MONSTER_MIN_NUTRITION);
-    assert.ok(monster.nutrition <= MEAT_MONSTER_MAX_NUTRITION);
-    assert.ok(monster.moraleCost >= MEAT_MONSTER_MIN_MORALE_COST);
-    assert.ok(monster.moraleCost <= MEAT_MONSTER_MAX_MORALE_COST);
+    assert.ok(monster.carcass.nutrition >= MEAT_MONSTER_MIN_NUTRITION);
+    assert.ok(monster.carcass.nutrition <= MEAT_MONSTER_MAX_NUTRITION);
+    assert.equal(monster.carcass.moraleCost, MEAT_MONSTER_MORALE_COST);
+    assert.equal(monster.moraleReward, MEAT_MONSTER_MORALE_REWARD);
   }
   assert.ok(first.some(({ col, row }) => (
     Math.max(Math.abs(col - player.col), Math.abs(row - player.row)) <= 3 &&

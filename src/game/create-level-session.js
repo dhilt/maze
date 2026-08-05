@@ -96,10 +96,13 @@ export function createLevelSession({
     onStatChange: onStatsDirty,
     onImpact: combat.queueImpact,
   });
+  const findEntityById = (id) => (
+    monsters.find((monster) => monster.id === id) ?? null
+  );
   const consume = createConsume({
     world,
     character,
-    findEntityById: (id) => monsters.find((monster) => monster.id === id) ?? null,
+    findEntityById,
     onStatChange: onStatsDirty,
   });
   const adapter = createActionAdapter({
@@ -107,6 +110,7 @@ export function createLevelSession({
     player,
     character,
     findEntryBlocker: enemies.findEntryBlocker,
+    findEntityById,
   });
   const reachedExit = () => isExitOpen(world.at(player.col, player.row));
   const scheduler = createActionScheduler({

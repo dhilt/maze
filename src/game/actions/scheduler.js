@@ -4,9 +4,11 @@
 // short turn) or cancelled (dropped from the queue).
 //
 // Queue rules: run in order pressed; cap 2 (overflow dropped); no two consecutive
-// equal directions. A discrete attack may buffer another attack so repeated
-// strikes do not require frame-perfect input. When idle & empty, a held
-// direction or attack refills it (auto-repeat).
+// equal directions. An explicit interaction replaces the buffered action when
+// necessary, but never interrupts the action already in progress. A discrete
+// attack may buffer another attack so repeated strikes do not require
+// frame-perfect input. When idle & empty, a held direction or attack refills it
+// (auto-repeat).
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
 export function createActionScheduler({
@@ -31,7 +33,12 @@ export function createActionScheduler({
   };
 
   function enqueue(id) {
-    if (queue.length >= 2) return;
+    if (queue.length >= 2) {
+      // A one-shot interaction must not disappear behind auto-repeated combat
+      // or movement. Keep the active head and replace only its successor.
+      if (id === "consume") queue[1] = id;
+      return;
+    }
     const last = queue.length ? queue[queue.length - 1] : null;
     if (id === last && id !== "attack") return;
     queue.push(id);

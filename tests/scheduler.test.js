@@ -19,7 +19,7 @@ function makeExecutor() {
     },
     get active() { return a !== null; },
     get move() { return a && a.kind === "step" ? a : null; },
-    get state() { return a && (a.kind === "attack" || a.kind === "wallAttack") ? a : null; },
+    get state() { return a; },
     facing: "down",
   };
 }
@@ -208,6 +208,10 @@ test("resolved action kinds route to their registered executors", () => {
     assert.equal(executors[executorName].log.length, 1);
     assert.equal(executors[executorName].log[0].kind, kind);
     assert.equal(scheduler.activeId, id);
+    if (id === "consume") {
+      assert.equal(scheduler.consumeState.kind, "consume");
+      assert.equal(scheduler.consumeState.elapsed, 1);
+    }
   }
 });
 

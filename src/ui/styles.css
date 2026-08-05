@@ -155,6 +155,15 @@ canvas {
   opacity: 0.85;
 }
 
+.stats-head .is-rejected {
+  animation: stat-rejected 1s linear;
+}
+
+@keyframes stat-rejected {
+  from { color: #ef5f5f; }
+  to { color: var(--fg); }
+}
+
 .stats-value {
   display: none;
   font-variant-numeric: tabular-nums;

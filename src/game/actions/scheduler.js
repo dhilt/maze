@@ -108,6 +108,7 @@ export function createActionScheduler({
     get facing() { return movement.facing; },
     get move() { return movement.move; },
     get attackState() { return attack.state; },
+    get consumeState() { return consume?.state ?? null; },
     getPixelPosition() { return movement.getPixelPosition(); },
     get activeId() { return running ? queue[0] : null; },
     get buffered() { return queue.length > 1 ? queue[1] : null; },

@@ -8,13 +8,21 @@ import { generateWorld } from "../src/world/world.js";
 
 const COSTS = { step: 5, turn: 1, attack: 5, consume: 10 };
 
-function makeAdapter(world, player, findEntryBlocker, character, findEntityById) {
+function makeAdapter(
+  world,
+  player,
+  findEntryBlocker,
+  character,
+  findEntityById,
+  onActionRejected,
+) {
   return createActionAdapter({
     world,
     player,
     character: character ?? createCharacter({ actionCosts: COSTS }),
     findEntryBlocker,
     findEntityById,
+    onActionRejected,
   });
 }
 
@@ -152,6 +160,7 @@ test("consume resolves only for an injured hero with enough morale standing on a
     actionCosts: COSTS,
   });
   const monster = { id: "m1", carcass: { moraleCost: 3 } };
+  const rejections = [];
   const corpse = {
     id: "corpse-m1",
     kind: "corpse",
@@ -165,6 +174,7 @@ test("consume resolves only for an injured hero with enough morale standing on a
     undefined,
     character,
     (id) => (id === monster.id ? monster : null),
+    (event) => rejections.push(event),
   );
 
   assert.deepEqual(adapter.adapt("consume"), {
@@ -175,12 +185,14 @@ test("consume resolves only for an injured hero with enough morale standing on a
 
   character.stats.morale = 2;
   assert.equal(adapter.adapt("consume"), null);
+  assert.deepEqual(rejections, [{ action: "consume", reason: "morale" }]);
   character.stats.morale = 3;
   character.stats.health = character.statsMax.health;
   assert.equal(adapter.adapt("consume"), null);
   character.stats.health = 15;
   world.at(0, 0).objects.length = 0;
   assert.equal(adapter.adapt("consume"), null);
+  assert.equal(rejections.length, 1, "other cancellation reasons do not flash Morale");
 });
 
 test("consume selects an affordable carcass when several corpses share a cell", () => {

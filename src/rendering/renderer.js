@@ -8,6 +8,7 @@ import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
 import {
   KNIGHT_IDLE_FRAME_UNITS,
   selectAttackFrame,
+  selectConsumeFrame,
 } from "./character/knight-sprites.js";
 import { drawExits } from "./exits.js";
 import { createEnemyRenderState, drawEnemies } from "./enemies.js";
@@ -120,7 +121,7 @@ export function createRenderer(ctx, config) {
 
   }
 
-  function drawPlayer({ player, move, attack, facing, tick }, cam) {
+  function drawPlayer({ player, move, attack, consume, facing, tick }, cam) {
     let wx = player.col * CELL;
     let wy = player.row * CELL;
     if (move) {
@@ -145,6 +146,14 @@ export function createRenderer(ctx, config) {
       const frames = KNIGHT_SPRITES.attack[facing];
       const progress = Math.min(attack.elapsed / attack.timeCost, 0.999999);
       img = frames[selectAttackFrame(progress, frames.length)];
+    }
+    if (consume) {
+      // The corpse occupies the same cell and is drawn by the background-object
+      // layer. For the initial implementation the approved down render is used
+      // regardless of the direction retained by the action scheduler.
+      const frames = KNIGHT_SPRITES.consume.down;
+      const progress = Math.min(consume.elapsed / consume.timeCost, 0.999999);
+      img = frames[selectConsumeFrame(progress, frames.length)];
     }
     if (img.complete && img.naturalWidth) {
       ctx.drawImage(img, sx, sy, CELL, CELL);

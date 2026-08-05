@@ -21,6 +21,7 @@ export function createActionAdapter({
   character,
   findEntryBlocker = () => null,
   findEntityById = () => null,
+  onActionRejected,
 }) {
   if (!character?.actionCosts) {
     throw new Error("Action adapter requires character action costs");
@@ -44,6 +45,7 @@ export function createActionAdapter({
       // Several monsters may die on the same cell. Pick the first carcass the
       // hero can actually afford instead of letting another corpse mask it.
       let target = null;
+      let blockedByMorale = false;
       for (const corpse of cell?.objects ?? []) {
         if (corpse.kind !== CORPSE_KIND) continue;
         const entity = findEntityById(corpse.entityId);
@@ -56,8 +58,14 @@ export function createActionAdapter({
           target = { corpse, entity };
           break;
         }
+        blockedByMorale = true;
       }
-      if (target === null) return null;
+      if (target === null) {
+        if (blockedByMorale) {
+          onActionRejected?.({ action: "consume", reason: "morale" });
+        }
+        return null;
+      }
       return {
         kind: "consume",
         timeCost: character.actionCosts.consume,

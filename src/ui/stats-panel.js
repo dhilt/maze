@@ -34,7 +34,7 @@ function barRow(label, key, value, max, withRemainder) {
     : "";
   return (
     `<div class="stats-row">` +
-      `<div class="stats-head"><span>${label}</span><span class="stats-value">${value} / ${max}</span></div>` +
+      `<div class="stats-head"><span data-stat-label="${key}">${label}</span><span class="stats-value">${value} / ${max}</span></div>` +
       bar +
       remainder +
     `</div>`
@@ -117,5 +117,13 @@ export function createStatsPanel(root) {
     fill.style.background = barColor(frac);
   }
 
-  return { update, setRemainder, setDebug, setLevel };
+  function notify(stat) {
+    const label = root.querySelector(`[data-stat-label="${stat}"]`);
+    if (!label) return;
+    label.classList.remove("is-rejected");
+    void label.offsetWidth; // restart the animation on repeated attempts
+    label.classList.add("is-rejected");
+  }
+
+  return { update, setRemainder, setDebug, setLevel, notify };
 }

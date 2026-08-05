@@ -26,6 +26,7 @@ export function createLevelSession({
   statWear,
   input,
   onStatsDirty,
+  onActionRejected,
 }) {
   const worldSeed = levelSeed(config.worldSeed, level.number, 0x9e3779b9);
   const concreteMazeSeed = levelSeed(mazeSeed, level.number, 0x85ebca6b);
@@ -111,6 +112,7 @@ export function createLevelSession({
     character,
     findEntryBlocker: enemies.findEntryBlocker,
     findEntityById,
+    onActionRejected,
   });
   const reachedExit = () => isExitOpen(world.at(player.col, player.row));
   const scheduler = createActionScheduler({
@@ -148,6 +150,7 @@ export function createLevelSession({
     updateCamera() { camera.update(); },
     get move() { return scheduler.move; },
     get attack() { return scheduler.attackState; },
+    get consume() { return scheduler.consumeState; },
     get facing() { return scheduler.facing; },
     get cam() { return camera.state; },
   };

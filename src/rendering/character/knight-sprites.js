@@ -26,3 +26,15 @@ export function selectAttackFrame(
   }
   return count - 1;
 }
+
+export function selectConsumeFrame(
+  progress,
+  frameCount = KNIGHT_ASSET_PACK.animations.consume.frames,
+) {
+  const count = Math.max(1, Math.floor(frameCount));
+  const boundedProgress = Math.min(
+    Math.max(Number.isFinite(progress) ? progress : 0, 0),
+    0.999999,
+  );
+  return Math.floor(boundedProgress * count);
+}

@@ -41,6 +41,7 @@ export function createGame({
   const monsterHistory = [];
   const runMazeSeed = config.wallSeed ?? (Math.random() * 0x100000000) >>> 0;
   let statsDirty = false;
+  let rejectedStat = null;
 
   function buildLevelSession() {
     return createLevelSession({
@@ -51,6 +52,7 @@ export function createGame({
       statWear,
       input,
       onStatsDirty: () => { statsDirty = true; },
+      onActionRejected: ({ reason }) => { rejectedStat = reason; },
     });
   }
 
@@ -91,6 +93,10 @@ export function createGame({
       statsPanel.update(character);
       statsDirty = false;
     }
+    if (rejectedStat !== null) {
+      statsPanel.notify(rejectedStat);
+      rejectedStat = null;
+    }
     statsPanel.setRemainder("health", healthDrain.remaining);
     statsPanel.setRemainder("attack", statWear.remaining("attack"));
     session.updateCamera();
@@ -98,6 +104,7 @@ export function createGame({
       player: session.player,
       move: session.move,
       attack: session.attack,
+      consume: session.consume,
       facing: session.facing,
       cam: session.cam,
       world: session.world,
@@ -151,6 +158,7 @@ export function createGame({
       player: session.player,
       move: session.move,
       attack: session.attack,
+      consume: session.consume,
       facing: session.facing,
       cam: session.cam,
       world: session.world,

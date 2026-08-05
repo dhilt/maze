@@ -101,6 +101,36 @@ test("shows numeric stat values only in debug mode", () => {
   assert.equal(root.classList.contains("is-debug"), false);
 });
 
+test("restarts a rejected stat label notification", () => {
+  const classes = new Set();
+  const operations = [];
+  const label = {
+    offsetWidth: 10,
+    classList: {
+      remove(name) { classes.delete(name); operations.push(`remove:${name}`); },
+      add(name) { classes.add(name); operations.push(`add:${name}`); },
+    },
+  };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      return selector === '[data-stat-label="morale"]' ? label : null;
+    },
+  };
+  const panel = createStatsPanel(root);
+
+  panel.notify("morale");
+  panel.notify("morale");
+
+  assert.equal(classes.has("is-rejected"), true);
+  assert.deepEqual(operations, [
+    "remove:is-rejected",
+    "add:is-rejected",
+    "remove:is-rejected",
+    "add:is-rejected",
+  ]);
+});
+
 test("renders the final active level below full and completion at full", () => {
   const root = createRoot();
   const panel = createStatsPanel(root);

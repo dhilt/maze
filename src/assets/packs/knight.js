@@ -10,5 +10,6 @@ export const KNIGHT_ASSET_PACK = defineAssetPack({
     idle: { directions: DIRECTIONS, frames: 4 },
     walk: { directions: DIRECTIONS, frames: 4 },
     attack: { directions: DIRECTIONS, frames: 9 },
+    consume: { directions: ["down"], frames: 8 },
   },
 });

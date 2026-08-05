@@ -6,7 +6,7 @@ export const MEAT_MONSTER_KIND = "meat-monster";
 export const MEAT_MONSTER_DIRECTION_CHANGE_CHANCE = 0.2;
 export const MEAT_MONSTER_MIN_NUTRITION = 4;
 export const MEAT_MONSTER_MAX_NUTRITION = 7;
-export const MEAT_MONSTER_MORALE_COST = 3;
+export const MEAT_MONSTER_MORALE_COST = 2;
 export const MEAT_MONSTER_MORALE_REWARD = 1;
 export const MEAT_MONSTER_IMPACT_WEAR = 0.05;
 

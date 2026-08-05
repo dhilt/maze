@@ -135,6 +135,7 @@ function withGameEnvironment(run) {
 function createTestGame({
   speed,
   health,
+  healthDrainSpeed = 100,
   exitX,
   exitY = 0,
   worldRows = 1,
@@ -154,7 +155,7 @@ function createTestGame({
     stats: { health, attack: 7, defense: 5, morale: 8 },
     statsMax: { health: 20, attack: 7, defense: 5, morale: 10 },
     actionCosts: TEST_ACTION_COSTS,
-    healthDrainSpeed: 100,
+    healthDrainSpeed,
   });
   const game = createGame({
     canvas: {
@@ -448,6 +449,32 @@ test("a portal advances the level while only the final portal finishes the run",
     assert.ok(completed.gameTime > timeBeforeFinalPortal);
     assert.equal(completed.level.isComplete, true);
     assert.equal(completed.level.progress, 1);
+  });
+});
+
+test("advancing a level resets accumulated health drain", () => {
+  withGameEnvironment((environment) => {
+    const { game, state: first } = createTestGame({
+      speed: 1,
+      health: 13,
+      healthDrainSpeed: 2,
+      exitX: 2,
+      levels: [
+        { number: 1, width: 5, height: 1, monsterCount: 0 },
+        { number: 2, width: 10, height: 1, monsterCount: 0 },
+      ],
+    });
+
+    game.start();
+    environment.runFrame(); // one unit accumulates before entering level 2
+    assert.equal(game.getState().level.number, 2);
+
+    environment.runFrame(200);
+    assert.equal(first.character.stats.health, 13);
+
+    environment.runFrame(300);
+    assert.equal(first.character.stats.health, 12);
+    game.stop();
   });
 });
 

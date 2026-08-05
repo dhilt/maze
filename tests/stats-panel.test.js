@@ -30,7 +30,7 @@ function occurrences(text, token) {
   return text.split(token).length - 1;
 }
 
-test("removes both health bars when health reaches zero", () => {
+test("keeps empty stat tracks visible when health reaches zero", () => {
   const root = createRoot();
   const panel = createStatsPanel(root);
   const character = createPanelCharacter({ health: 1, healthMax: 13 });
@@ -43,8 +43,9 @@ test("removes both health bars when health reaches zero", () => {
   panel.update(character);
 
   assert.match(root.innerHTML, />0 \/ 13</);
-  assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 2);
-  assert.equal(occurrences(root.innerHTML, 'class="stats-remainder"'), 1);
+  assert.equal(occurrences(root.innerHTML, 'class="stats-bar"'), 3);
+  assert.equal(occurrences(root.innerHTML, 'class="stats-remainder"'), 2);
+  assert.match(root.innerHTML, /width:0%;background:rgb\(172, 102, 102\)/);
 });
 
 test("updates Health and Attack remainders independently", () => {
@@ -68,6 +69,22 @@ test("updates Health and Attack remainders independently", () => {
 
   assert.equal(fills.health.style.width, "25%");
   assert.equal(fills.attack.style.width, "70%");
+});
+
+test("keeps a depleted stat remainder track empty", () => {
+  const healthFill = { style: {} };
+  const root = {
+    innerHTML: "",
+    querySelector(selector) {
+      return selector.includes('data-stat="health"') ? healthFill : null;
+    },
+  };
+  const panel = createStatsPanel(root);
+  panel.update(createPanelCharacter({ health: 0 }));
+
+  panel.setRemainder("health", 1);
+
+  assert.equal(healthFill.style.width, "0%");
 });
 
 test("shows numeric stat values only in debug mode", () => {

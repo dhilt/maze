@@ -21,8 +21,13 @@ export function createHealthDrain({ character }) {
     return lost;
   }
 
+  function reset() {
+    accumulated = 0;
+  }
+
   return {
     advance,
+    reset,
     get interval() { return interval; },
     // Fraction of the current interval still remaining (1 = just ticked, 0 = due).
     // A disabled drain always reads full.

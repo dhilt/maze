@@ -69,6 +69,7 @@ export function createGame({
     monsterHistory.push(...session.monsters);
     if (!levelBus.advance()) return false;
     session = buildLevelSession();
+    healthDrain.reset();
     statsPanel.setLevel(levelBus.state);
     statsPanel.setRemainder("health", healthDrain.remaining);
     statsPanel.setRemainder("attack", statWear.remaining("attack"));

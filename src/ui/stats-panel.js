@@ -5,8 +5,8 @@
 // Stat rows are declarative, so adding a stat is one entry here.
 
 const ROWS = [
-  { type: "bar",   label: "Health",  key: "health", remainder: true, hideWhenEmpty: true },
-  { type: "bar",   label: "Attack",  key: "attack", remainder: true, hideWhenEmpty: true },
+  { type: "bar",   label: "Health",  key: "health", remainder: true },
+  { type: "bar",   label: "Attack",  key: "attack", remainder: true },
   { type: "value", label: "Defense", key: "defense" },
   { type: "bar",   label: "Morale",  key: "morale" },
 ];
@@ -25,16 +25,12 @@ function barColor(frac) {
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 }
 
-function barRow(label, key, value, max, withRemainder, hideWhenEmpty) {
+function barRow(label, key, value, max, withRemainder) {
   const frac = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const color = barColor(frac);
-  // At zero the numeric value is sufficient; empty tracks carry no information.
-  const visible = !hideWhenEmpty || value > 0;
-  const bar = visible
-    ? `<div class="stats-bar"><div class="stats-fill" style="width:${frac * 100}%;background:${color}"></div></div>`
-    : "";
-  const remainder = withRemainder && visible
-    ? `<div class="stats-remainder"><div class="stats-remainder-fill" data-stat="${key}" style="width:100%;background:${color}"></div></div>`
+  const bar = `<div class="stats-bar"><div class="stats-fill" style="width:${frac * 100}%;background:${color}"></div></div>`;
+  const remainder = withRemainder
+    ? `<div class="stats-remainder"><div class="stats-remainder-fill" data-stat="${key}" style="width:${value > 0 ? 100 : 0}%;background:${color}"></div></div>`
     : "";
   return (
     `<div class="stats-row">` +
@@ -87,7 +83,6 @@ export function createStatsPanel(root) {
             ch.stats[row.key],
             ch.statsMax[row.key],
             row.remainder,
-            row.hideWhenEmpty,
           )
         : valueRow(row.label, ch.stats[row.key])
     ).join("");
@@ -113,7 +108,9 @@ export function createStatsPanel(root) {
   function setRemainder(stat, remaining) {
     const fill = remainderFills.get(stat);
     if (!fill || !current) return;
-    const r = Math.max(0, Math.min(1, remaining));
+    const r = current.stats[stat] > 0
+      ? Math.max(0, Math.min(1, remaining))
+      : 0;
     const max = current.statsMax[stat];
     const frac = max > 0 ? current.stats[stat] / max : 0;
     fill.style.width = `${r * 100}%`;

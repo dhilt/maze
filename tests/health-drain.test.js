@@ -63,6 +63,23 @@ test("remaining reports the fraction of the interval left and resets on a tick",
   assert.equal(character.stats.health, 19);
 });
 
+test("reset discards accumulated drain without changing health", () => {
+  const character = createCharacter({
+    stats: { health: 20 },
+    healthDrainSpeed: 100,
+  });
+  const drain = createHealthDrain({ character });
+
+  drain.advance(60);
+  drain.reset();
+
+  assert.equal(drain.remaining, 1);
+  assert.equal(drain.advance(40), 0);
+  assert.equal(character.stats.health, 20);
+  assert.equal(drain.advance(60), 1);
+  assert.equal(character.stats.health, 19);
+});
+
 test("health never drops below zero", () => {
   const character = createCharacter({
     stats: { health: 1 },

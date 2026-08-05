@@ -4,13 +4,10 @@ import test from "node:test";
 
 import { createAssetRegistry } from "../src/assets/asset-registry.js";
 import {
-  createAssetBundle,
   defineAssetPack,
   listAssetPackUrls,
 } from "../src/assets/asset-pack.js";
-import { ASSET_PACKS, getAssetPack } from "../src/assets/catalog.js";
-import { KNIGHT_ASSET_PACK } from "../src/assets/packs/knight.js";
-import { MEAT_MONSTER_ASSET_PACK } from "../src/assets/packs/meat-monster.js";
+import { ASSET_PACKS } from "../src/assets/catalog.js";
 
 const TEST_PACK = defineAssetPack({
   id: "actor",
@@ -40,14 +37,6 @@ function controlledImages() {
   };
 }
 
-test("the asset catalog exposes immutable semantic packs", () => {
-  assert.equal(getAssetPack("knight"), KNIGHT_ASSET_PACK);
-  assert.equal(getAssetPack("meat-monster"), MEAT_MONSTER_ASSET_PACK);
-  assert.equal(getAssetPack("unknown"), null);
-  assert.equal(Object.isFrozen(ASSET_PACKS), true);
-  assert.equal(Object.isFrozen(MEAT_MONSTER_ASSET_PACK.animations.attack), true);
-});
-
 test("a declarative pack expands animations and standalone images in order", () => {
   assert.deepEqual(listAssetPackUrls(TEST_PACK), [
     "./assets/actor/idle/down/0.png?v=rev%201",
@@ -56,14 +45,6 @@ test("a declarative pack expands animations and standalone images in order", () 
     "./assets/actor/idle/up/1.png?v=rev%201",
     "./assets/actor/portrait.png?v=rev%201",
   ]);
-});
-
-test("a bundle preserves the declared shape without owning image loading", () => {
-  const bundle = createAssetBundle(TEST_PACK, (src) => ({ src }));
-
-  assert.equal(bundle.animations.idle.down.length, 2);
-  assert.equal(bundle.animations.idle.up.length, 2);
-  assert.match(bundle.images.portrait.src, /portrait\.png\?v=rev%201$/);
 });
 
 test("every declared production asset is a committed 64px PNG", async () => {

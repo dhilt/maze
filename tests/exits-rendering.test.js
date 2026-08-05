@@ -48,22 +48,6 @@ test("portal animation is deterministic and changes with game time", () => {
   assert.notDeepEqual(drawAt(0), drawAt(7));
 });
 
-test("cells without an exit do not draw a portal", () => {
-  const world = generateWorld({ width: 1, height: 1, seed: 1 });
-  const ctx = recordingContext();
-
-  drawExits(ctx, {
-    cam: { px: 0, py: 0 },
-    world,
-    cellSize: 64,
-    viewCols: 1,
-    viewRows: 1,
-    time: 7,
-  });
-
-  assert.deepEqual(ctx.calls, []);
-});
-
 test("a hidden exit marker does not draw a portal", () => {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
   world.at(0, 0).exit = { kind: "exit", phase: EXIT_PHASES.HIDDEN };

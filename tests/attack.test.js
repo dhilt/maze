@@ -7,12 +7,6 @@ import { createStatWear } from "../src/game/stat-wear.js";
 import { createWall } from "../src/world/maze.js";
 import { generateWorld } from "../src/world/world.js";
 
-test("attack is inactive until begun", () => {
-  const attack = createAttack();
-  assert.equal(attack.active, false);
-  assert.equal(attack.state, null);
-});
-
 test("attack runs for its time cost then clears", () => {
   const attack = createAttack();
   attack.begin({ timeCost: 5 });

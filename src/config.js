@@ -1,4 +1,4 @@
-export const VERSION = "0.69";
+export const VERSION = "0.70";
 
 // Physical seconds are converted to logical game-time units before they reach
 // the action bus. At normal speed 1 unit lasts 50 ms.

@@ -5,7 +5,3 @@ export const ASSET_PACKS = Object.freeze({
   [KNIGHT_ASSET_PACK.id]: KNIGHT_ASSET_PACK,
   [MEAT_MONSTER_ASSET_PACK.id]: MEAT_MONSTER_ASSET_PACK,
 });
-
-export function getAssetPack(id) {
-  return ASSET_PACKS[id] ?? null;
-}

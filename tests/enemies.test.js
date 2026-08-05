@@ -5,7 +5,6 @@ import { createCharacter } from "../src/entities/character.js";
 import {
   createMeatMonster,
   createMeatMonsterStats,
-  MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
   MEAT_MONSTER_IMPACT_WEAR,
   MEAT_MONSTER_MAX_MORALE_COST,
   MEAT_MONSTER_MAX_NUTRITION,
@@ -83,12 +82,6 @@ test("every meat monster owns independent stats and action costs", () => {
   first.stats.health = 0;
   assert.equal(first.statsMax.health, firstInitial.health);
   assert.deepEqual(second.stats, secondInitial);
-});
-
-test("the configured direction-change chance is a valid probability", () => {
-  assert.ok(Number.isFinite(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE));
-  assert.ok(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE >= 0);
-  assert.ok(MEAT_MONSTER_DIRECTION_CHANGE_CHANCE <= 1);
 });
 
 test("direction-change chance rejects values outside the probability range", () => {

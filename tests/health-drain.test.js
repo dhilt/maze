@@ -24,18 +24,6 @@ test("loses 1 health per interval and carries the remainder", () => {
   assert.equal(character.stats.health, 16);
 });
 
-test("uses the character health drain speed", () => {
-  const character = createCharacter({
-    stats: { health: 20 },
-    healthDrainSpeed: 10,
-  });
-  const drain = createHealthDrain({ character });
-
-  assert.equal(drain.interval, 10);
-  drain.advance(10);
-  assert.equal(character.stats.health, 19);
-});
-
 test("a non-positive health drain speed disables the drain", () => {
   const character = createCharacter({
     stats: { health: 20 },

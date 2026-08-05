@@ -7,6 +7,7 @@ const HEALTH_BAR_WIDTH = 28;
 const HEALTH_BAR_HEIGHT = 2;
 const HEALTH_BAR_BACKGROUND = "rgba(20, 8, 10, 0.58)";
 const HEALTH_BAR_FILL = "rgba(184, 48, 56, 0.84)";
+const DEBUG_STATS_COLOR = "rgba(255, 255, 255, 0.82)";
 
 export const HEALTH_BAR_HIDE_DELAY_SECONDS = 1;
 
@@ -41,6 +42,19 @@ function drawHealthBar(ctx, monster, cellSize) {
   ctx.fillRect(x, y, Math.max(1, Math.round(width * ratio)), HEALTH_BAR_HEIGHT);
 }
 
+function drawDebugStats(ctx, monster, cellSize) {
+  const { health, attack, defense } = monster.stats;
+  ctx.fillStyle = DEBUG_STATS_COLOR;
+  ctx.font = `600 ${Math.max(6, Math.round(cellSize * 0.11))}px ui-monospace, monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(
+    `${health} ${attack} ${defense}`,
+    0,
+    -cellSize / 2 + 13,
+  );
+}
+
 function occupiedCell(actor, move = actor.move) {
   return {
     col: actor.col + (move?.kind === "step" ? move.dx : 0),
@@ -73,6 +87,7 @@ function drawMeatMonster(
   playerMove,
   realTime,
   renderState,
+  debug,
 ) {
   const position = pixelPosition(monster, cellSize);
   const x = position.x - cam.px + cellSize / 2;
@@ -94,16 +109,20 @@ function drawMeatMonster(
   if (image?.complete && image.naturalWidth) {
     ctx.drawImage(image, -cellSize / 2, -cellSize / 2, cellSize, cellSize);
   }
-  if (player) {
+  if (player || debug) {
     const monsterCell = occupiedCell(monster);
-    const playerCell = occupiedCell(player, playerMove);
-    const adjacent = (
+    const playerCell = player ? occupiedCell(player, playerMove) : null;
+    const adjacent = playerCell !== null && (
       Math.abs(monsterCell.col - playerCell.col) +
       Math.abs(monsterCell.row - playerCell.row)
     ) === 1;
-    if (healthBarVisible(monster, adjacent, realTime, renderState)) {
+    const contactVisible = player
+      ? healthBarVisible(monster, adjacent, realTime, renderState)
+      : false;
+    if (debug || contactVisible) {
       drawHealthBar(ctx, monster, cellSize);
     }
+    if (debug) drawDebugStats(ctx, monster, cellSize);
   }
   ctx.restore();
 }
@@ -117,6 +136,7 @@ export function drawEnemies(ctx, {
   playerMove,
   realTime = 0,
   renderState = createEnemyRenderState(),
+  debug = false,
 }) {
   const liveIds = new Set(monsters
     .filter(isAlive)
@@ -136,6 +156,7 @@ export function drawEnemies(ctx, {
         playerMove,
         realTime,
         renderState,
+        debug,
       );
     }
   }

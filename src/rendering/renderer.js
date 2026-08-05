@@ -55,7 +55,7 @@ export function createRenderer(ctx, config) {
     return floorRenderer;
   }
 
-  // Draw the continuous floor, optional gameplay grid, then the maze walls.
+  // Draw the continuous floor, optional cell labels, then the maze walls.
   function drawWorld({
     cam,
     world,
@@ -67,13 +67,11 @@ export function createRenderer(ctx, config) {
   }) {
     getFloor(world, activeFloorStyle).draw(ctx, cam, W, H);
 
-    // The gameplay grid is a debug overlay only. With debug off the slabs
-    // read as one continuous floor instead of a board of stamped cells.
+    // Cell coordinates remain available in debug mode without covering the
+    // floor artwork with a grid.
     if (dbg) {
       const startCol = Math.floor(cam.px / CELL);
       const startRow = Math.floor(cam.py / CELL);
-      ctx.strokeStyle = "rgba(230, 235, 242, 0.075)";
-      ctx.lineWidth = 1;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.font = numFont;
@@ -82,7 +80,6 @@ export function createRenderer(ctx, config) {
           if (c < 0 || c >= world.width || r < 0 || r >= world.height) continue;
           const sx = c * CELL - cam.px;
           const sy = r * CELL - cam.py;
-          ctx.strokeRect(sx + 0.5, sy + 0.5, CELL, CELL);
           ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
           ctx.fillText(`${c}/${r}`, sx + CELL / 2, sy + CELL / 2);
         }
@@ -185,6 +182,7 @@ export function createRenderer(ctx, config) {
       playerMove: state.move,
       realTime: Number.isFinite(state.tick?.realTime) ? state.tick.realTime : 0,
       renderState: ENEMY_RENDER_STATE,
+      debug: dbg,
     });
     drawPlayer(state, cam);
     ctx.restore();

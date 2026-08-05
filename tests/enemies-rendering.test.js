@@ -11,11 +11,13 @@ function createContext() {
   const translations = [];
   const images = [];
   const fills = [];
+  const texts = [];
   let fillStyle = "";
   return {
     translations,
     images,
     fills,
+    texts,
     get fillStyle() { return fillStyle; },
     set fillStyle(value) { fillStyle = value; },
     save() {},
@@ -27,6 +29,7 @@ function createContext() {
     fill() {},
     stroke() {},
     fillRect(...args) { fills.push({ style: fillStyle, args }); },
+    fillText(...args) { texts.push({ style: fillStyle, args }); },
     strokeRect() {},
     drawImage(...args) { images.push(args); },
   };
@@ -161,6 +164,35 @@ test("a monster health bar stays hidden outside side adjacency", () => {
   });
 
   assert.deepEqual(ctx.fills, []);
+});
+
+test("debug mode shows monster stats below an always-visible health bar", () => {
+  const ctx = createContext();
+  drawEnemies(ctx, {
+    monsters: [{
+      id: "m1",
+      kind: "meat-monster",
+      col: 1,
+      row: 1,
+      facing: "down",
+      move: null,
+      attack: null,
+      stats: { health: 5, attack: 6, defense: 7 },
+      statsMax: { health: 10, attack: 6, defense: 7 },
+    }],
+    cam: { px: 0, py: 0 },
+    cellSize: 64,
+    meatMonsterSprites: createSprites(),
+    player: { col: 0, row: 0 },
+    playerMove: null,
+    debug: true,
+  });
+
+  assert.equal(ctx.fills.length, 2);
+  assert.deepEqual(ctx.texts, [{
+    style: "rgba(255, 255, 255, 0.82)",
+    args: ["5 6 7", 0, -19],
+  }]);
 });
 
 test("a visible health bar relaxes for the configured delay after adjacency ends", () => {

@@ -146,14 +146,41 @@ test("a preserved dead monster emits its death event only once", () => {
     player,
     character,
     monsters,
-    onMonsterDeath: (dead) => deaths.push(dead.id),
+    onMonsterDeath: ({ monster: dead, killer, at }) => {
+      deaths.push({ id: dead.id, killer, at });
+    },
   });
   combat.queueImpact(heroHit());
 
   assert.deepEqual(combat.resolve().deadMonsterIds, [monster.id]);
   assert.deepEqual(combat.resolve().deadMonsterIds, []);
-  assert.deepEqual(deaths, [monster.id]);
+  assert.deepEqual(deaths, [{ id: monster.id, killer: "player", at: 5 }]);
   assert.equal(monsters[0], monster);
+});
+
+test("multiple combat deaths are emitted in their impact-time order", () => {
+  const player = { col: 0, row: 0 };
+  const character = createCharacter({
+    stats: { attack: 7 },
+    statsMax: { attack: 7 },
+  });
+  const late = monsterAt({ id: "late", health: 2 });
+  const early = monsterAt({ id: "early", health: 2 });
+  late.col = 1;
+  early.col = 2;
+  const deaths = [];
+  const combat = createCombat({
+    player,
+    character,
+    monsters: [late, early],
+    onMonsterDeath: ({ monster, at }) => deaths.push([monster.id, at]),
+  });
+  combat.queueImpact({ ...heroHit(4), targetCell: { col: 1, row: 0 } });
+  combat.queueImpact({ ...heroHit(1), targetCell: { col: 2, row: 0 } });
+
+  combat.resolve();
+
+  assert.deepEqual(deaths, [["early", 1], ["late", 4]]);
 });
 
 test("an entity attack misses after its target leaves the attacked cell", () => {

@@ -77,7 +77,7 @@ export function createCombat({
     queued.push({ at, attacker, targetCell, strike });
   }
 
-  function resolveGroup(events, impacts, playerKills) {
+  function resolveGroup(events, impacts, playerDefeats) {
     const pending = [];
 
     for (const event of events) {
@@ -119,12 +119,12 @@ export function createCombat({
       const total = totals.get(hit.target.key) ?? {
         target: hit.target,
         damage: 0,
-        creditedToPlayer: false,
+        playerHitAt: null,
       };
       total.damage += hit.damage;
-      total.creditedToPlayer ||= (
-        hit.event.attacker.type === "player" && hit.damage > 0
-      );
+      if (hit.event.attacker.type === "player" && hit.damage > 0) {
+        total.playerHitAt ??= hit.event.at;
+      }
       totals.set(hit.target.key, total);
       impacts.push({
         at: hit.event.at,
@@ -135,12 +135,12 @@ export function createCombat({
     }
 
     let playerDamage = 0;
-    for (const { target, damage, creditedToPlayer } of totals.values()) {
+    for (const { target, damage, playerHitAt } of totals.values()) {
       const before = target.stats.health;
       target.stats.health = Math.max(0, before - damage);
       if (target.ref.type === "player") playerDamage += before - target.stats.health;
-      else if (before > 0 && target.stats.health === 0 && creditedToPlayer) {
-        playerKills.add(target.key);
+      else if (before > 0 && target.stats.health === 0 && playerHitAt !== null) {
+        playerDefeats.set(target.key, playerHitAt);
       }
     }
     return playerDamage;
@@ -162,7 +162,7 @@ export function createCombat({
     const events = queued.sort((left, right) => left.at - right.at);
     queued = [];
     const impacts = [];
-    const playerKills = new Set();
+    const playerDefeats = new Map();
     let playerDamage = 0;
 
     for (let start = 0; start < events.length;) {
@@ -171,20 +171,32 @@ export function createCombat({
         end < events.length &&
         Math.abs(events[end].at - events[start].at) <= SAME_TIME_EPSILON
       ) end += 1;
-      playerDamage += resolveGroup(events.slice(start, end), impacts, playerKills);
+      playerDamage += resolveGroup(events.slice(start, end), impacts, playerDefeats);
       start = end;
     }
 
     // Dead entities remain in the collection for history and corpse references.
-    const deadMonsterIds = [];
-    for (const monster of monsters) {
+    const deathEvents = [];
+    for (const [index, monster] of monsters.entries()) {
       if (monster.stats.health > 0 || handledDeaths.has(monster.id)) continue;
       handledDeaths.add(monster.id);
-      // Stored dead entities still produce corpses, but only a new player kill pays morale.
-      if (playerKills.has(monster)) rewardMorale(monster);
-      onMonsterDeath?.(monster);
-      deadMonsterIds.push(monster.id);
+      const defeatedByPlayer = playerDefeats.has(monster);
+      deathEvents.push({
+        index,
+        monster,
+        killer: defeatedByPlayer ? "player" : null,
+        at: defeatedByPlayer ? playerDefeats.get(monster) : null,
+      });
     }
+    // Victory order matters to time-based reactions such as the exit reveal.
+    deathEvents.sort((left, right) => (
+      (left.at ?? -Infinity) - (right.at ?? -Infinity) || left.index - right.index
+    ));
+    for (const event of deathEvents) {
+      if (event.killer === "player") rewardMorale(event.monster);
+      onMonsterDeath?.(event);
+    }
+    const deadMonsterIds = deathEvents.map(({ monster }) => monster.id);
     if (playerDamage > 0) onPlayerDamage?.(playerDamage);
 
     return { impacts, deadMonsterIds, playerDamage };

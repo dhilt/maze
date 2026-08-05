@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createCharacter } from "../src/entities/character.js";
 import { createGame } from "../src/game/game.js";
+import { EXIT_PHASES } from "../src/world/exit.js";
 import { createWall } from "../src/world/maze.js";
 
 const TEST_CONFIG = Object.freeze({
@@ -43,10 +44,16 @@ function keyEvent(type, code) {
 
 function createTestLevelBus(levels) {
   let index = 0;
+  let completed = false;
   return {
     advance() {
-      if (index >= levels.length - 1) return false;
+      if (completed || index >= levels.length - 1) return false;
       index += 1;
+      return true;
+    },
+    complete() {
+      if (completed || index !== levels.length - 1) return false;
+      completed = true;
       return true;
     },
     get current() { return levels[index]; },
@@ -55,8 +62,9 @@ function createTestLevelBus(levels) {
       return {
         number: index + 1,
         total: levels.length,
-        progress: (index + 1) / levels.length,
+        progress: completed ? 1 : (index + 1) / (levels.length + 1),
         isLast: index === levels.length - 1,
+        isComplete: completed,
         definition: levels[index],
       };
     },
@@ -114,6 +122,7 @@ function createTestGame({
   worldRows = 1,
   monsterCount = 0,
   levels,
+  preserveGeneratedExit = false,
 }) {
   const outcomes = [];
   const testLevels = levels ?? [{
@@ -149,8 +158,13 @@ function createTestGame({
   });
 
   const state = game.getState();
-  for (const cell of state.world.cells) cell.exit = false;
-  state.world.at(exitX, exitY).exit = true;
+  if (!preserveGeneratedExit) {
+    for (const cell of state.world.cells) cell.exit = null;
+    state.world.at(exitX, exitY).exit = {
+      kind: "exit",
+      phase: EXIT_PHASES.OPEN,
+    };
+  }
   return { game, state, outcomes };
 }
 
@@ -174,6 +188,47 @@ test("the game spawns and advances the configured meat monsters", () => {
     game.start();
     environment.runFrame();
     assert.ok(state.monsters.some((monster) => monster.move !== null));
+    game.stop();
+  });
+});
+
+test("a player victory starts a step-long portal reveal", () => {
+  withGameEnvironment((environment) => {
+    const { game, state, outcomes } = createTestGame({
+      speed: 2.5,
+      health: 20,
+      worldRows: 3,
+      monsterCount: 1,
+      preserveGeneratedExit: true,
+    });
+    const exitCell = state.world.cells.find((cell) => cell.exit !== null);
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col + 1;
+    monster.row = state.player.row;
+    monster.facing = "left";
+    Object.assign(monster.stats, { health: 2, attack: 0, defense: 5 });
+
+    assert.equal(exitCell.exit.phase, EXIT_PHASES.HIDDEN);
+    environment.target.dispatchEvent(keyEvent("keydown", "Space"));
+    game.start();
+    environment.runFrame();
+
+    assert.equal(monster.stats.health, 0);
+    assert.equal(exitCell.exit.phase, EXIT_PHASES.REVEALING);
+    assert.equal(exitCell.exit.revealStartedAt, 2.5);
+    assert.deepEqual(outcomes, []);
+
+    state.player.col = exitCell.x;
+    state.player.row = exitCell.y;
+    environment.target.dispatchEvent(keyEvent("keyup", "Space"));
+    environment.runFrame(200);
+    assert.equal(exitCell.exit.phase, EXIT_PHASES.REVEALING);
+    assert.deepEqual(outcomes, [], "a revealing portal is not usable yet");
+
+    environment.runFrame(300);
+    assert.equal(exitCell.exit.phase, EXIT_PHASES.OPEN);
+    assert.deepEqual(outcomes, ["escaped"]);
     game.stop();
   });
 });
@@ -333,6 +388,8 @@ test("a portal advances the level while only the final portal finishes the run",
     const second = game.getState();
     assert.equal(second.level.number, 2);
     assert.equal(second.level.isLast, true);
+    assert.equal(second.level.isComplete, false);
+    assert.ok(second.level.progress < 1);
     assert.deepEqual([second.world.width, second.world.height], [10, 1]);
     assert.equal(second.monsters.length, 3);
     assert.equal(second.monsterHistory.length, 1);
@@ -346,13 +403,19 @@ test("a portal advances the level while only the final portal finishes the run",
     assert.equal(second.character.stats.health, 13);
     assert.deepEqual(outcomes, [], "an intermediate portal must not finish the run");
 
-    for (const cell of second.world.cells) cell.exit = false;
-    second.world.at(second.player.col, second.player.row).exit = true;
+    for (const cell of second.world.cells) cell.exit = null;
+    second.world.at(second.player.col, second.player.row).exit = {
+      kind: "exit",
+      phase: EXIT_PHASES.OPEN,
+    };
     const timeBeforeFinalPortal = second.gameTime;
     environment.runFrame(200);
 
     assert.deepEqual(outcomes, ["escaped"]);
-    assert.ok(game.getState().gameTime > timeBeforeFinalPortal);
+    const completed = game.getState();
+    assert.ok(completed.gameTime > timeBeforeFinalPortal);
+    assert.equal(completed.level.isComplete, true);
+    assert.equal(completed.level.progress, 1);
   });
 });
 

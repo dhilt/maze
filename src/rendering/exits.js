@@ -1,16 +1,19 @@
 // Rendering for semantic exit markers stored directly on world cells.
 
+import { getExitRevealProgress } from "../world/exit.js";
+
 const TAU = Math.PI * 2;
 const PULSE_PERIOD = 18;
 const ROTATION_PERIOD = 48;
 
-function drawPortal(ctx, x, y, cellSize, time) {
+function drawPortal(ctx, x, y, cellSize, time, opacity) {
   const pulse = (Math.sin((time / PULSE_PERIOD) * TAU) + 1) / 2;
   const rotation = (time / ROTATION_PERIOD) * TAU;
   const radiusX = cellSize * 0.32;
   const radiusY = cellSize * 0.2;
 
   ctx.save();
+  ctx.globalAlpha = opacity;
   ctx.translate(x + cellSize * 0.5, y + cellSize * 0.56);
 
   ctx.shadowColor = `rgba(87, 220, 211, ${0.5 + pulse * 0.3})`;
@@ -73,13 +76,16 @@ export function drawExits(ctx, {
 
   for (let row = startRow; row <= endRow; row++) {
     for (let col = startCol; col <= endCol; col++) {
-      if (!world.at(col, row)?.exit) continue;
+      const progress = getExitRevealProgress(world.at(col, row), animationTime);
+      if (progress <= 0) continue;
+      const opacity = progress * progress * (3 - 2 * progress);
       drawPortal(
         ctx,
         col * cellSize - cam.px,
         row * cellSize - cam.py,
         cellSize,
         animationTime,
+        opacity,
       );
     }
   }

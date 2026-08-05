@@ -138,10 +138,10 @@ test("a blocked monster chooses its reverse as readily as either side turn", () 
   }
 });
 
-test("meat monster spawning is deterministic, unique, and avoids hero and exit", () => {
+test("meat monster spawning is deterministic, unique, and avoids the hero", () => {
   const world = generateWorld({ width: 4, height: 3, seed: 1 });
   const player = { col: 2, row: 1 };
-  world.at(0, 0).exit = true;
+  world.at(0, 0).exit = { kind: "exit", phase: "hidden" };
 
   const first = spawnMeatMonsters({ world, player, count: 6, seed: 19 });
   const second = spawnMeatMonsters({ world, player, count: 6, seed: 19 });
@@ -160,7 +160,6 @@ test("meat monster spawning is deterministic, unique, and avoids hero and exit",
   assert.deepEqual(snapshot(first), snapshot(second));
   assert.equal(new Set(first.map(({ col, row }) => `${col}:${row}`)).size, first.length);
   assert.ok(first.every(({ col, row }) => col !== player.col || row !== player.row));
-  assert.ok(first.every(({ col, row }) => !world.at(col, row).exit));
   for (const monster of first) {
     assert.notEqual(monster.stats, monster.statsMax);
     for (const [name, min] of Object.entries(MEAT_MONSTER_MIN_STATS)) {
@@ -176,6 +175,17 @@ test("meat monster spawning is deterministic, unique, and avoids hero and exit",
     Math.max(Math.abs(col - player.col), Math.abs(row - player.row)) <= 3 &&
     Math.abs(col - player.col) + Math.abs(row - player.row) >= 2
   )));
+});
+
+test("a monster may spawn on a hidden exit cell", () => {
+  const world = generateWorld({ width: 2, height: 1, seed: 1 });
+  const player = { col: 0, row: 0 };
+  world.at(1, 0).exit = { kind: "exit", phase: "hidden" };
+
+  const monsters = spawnMeatMonsters({ world, player, count: 1, seed: 19 });
+
+  assert.equal(monsters.length, 1);
+  assert.deepEqual([monsters[0].col, monsters[0].row], [1, 0]);
 });
 
 test("a moving monster frees its source but reserves its destination", () => {

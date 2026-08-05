@@ -8,30 +8,45 @@ export const LEVELS = Object.freeze([
 
 export function createLevelBus() {
   let index = 0;
+  let completed = false;
+
+  function progress() {
+    // Active levels occupy the first N states; clearing the final level is N + 1.
+    return completed ? 1 : (index + 1) / (LEVELS.length + 1);
+  }
 
   function snapshot() {
     return Object.freeze({
       number: index + 1,
       total: LEVELS.length,
-      progress: (index + 1) / LEVELS.length,
+      progress: progress(),
       isLast: index === LEVELS.length - 1,
+      isComplete: completed,
       definition: LEVELS[index],
     });
   }
 
   function advance() {
-    if (index >= LEVELS.length - 1) return false;
+    if (completed || index >= LEVELS.length - 1) return false;
     index += 1;
+    return true;
+  }
+
+  function complete() {
+    if (completed || index !== LEVELS.length - 1) return false;
+    completed = true;
     return true;
   }
 
   return {
     advance,
+    complete,
     get current() { return LEVELS[index]; },
     get number() { return index + 1; },
     get total() { return LEVELS.length; },
-    get progress() { return (index + 1) / LEVELS.length; },
+    get progress() { return progress(); },
     get isLast() { return index === LEVELS.length - 1; },
+    get isComplete() { return completed; },
     get state() { return snapshot(); },
   };
 }

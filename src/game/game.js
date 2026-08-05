@@ -78,7 +78,7 @@ export function createGame({
     if (healthDrain.advance(tick.dt) > 0) statsDirty = true;
     let died = character.stats.health <= 0;
     if (!died) {
-      session.update(tick.dt);
+      session.update(tick);
       died = character.stats.health <= 0;
     }
     if (statsDirty) {
@@ -109,6 +109,8 @@ export function createGame({
     }
     if (session.reachedExit()) {
       if (levelBus.isLast) {
+        levelBus.complete();
+        statsPanel.setLevel(levelBus.state);
         finish("escaped");
         return;
       }

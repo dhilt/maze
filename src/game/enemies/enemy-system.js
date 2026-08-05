@@ -29,7 +29,7 @@ export function spawnMeatMonsters({
   const random = createRandom(seed >>> 0);
   const statsRandom = createRandom((seed ^ 0x51ed270b) >>> 0);
   const available = world.cells.filter((cell) => (
-    !cell.exit && (cell.x !== player.col || cell.y !== player.row)
+    cell.x !== player.col || cell.y !== player.row
   ));
   const spawnCount = Math.min(count, available.length);
   const monsters = [];

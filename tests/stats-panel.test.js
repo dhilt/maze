@@ -84,15 +84,16 @@ test("shows numeric stat values only in debug mode", () => {
   assert.equal(root.classList.contains("is-debug"), false);
 });
 
-test("renders Level as a green bar from one fifth through full", () => {
+test("renders the final active level below full and completion at full", () => {
   const root = createRoot();
   const panel = createStatsPanel(root);
-  panel.setLevel({ number: 1, total: 5, progress: 0.2 });
+  const finalLevelProgress = 5 / 6;
+  panel.setLevel({ number: 5, total: 5, progress: finalLevelProgress });
   panel.update(createPanelCharacter());
 
   assert.match(root.innerHTML, />Level</);
-  assert.match(root.innerHTML, />1 \/ 5</);
-  assert.match(root.innerHTML, /width:20%/);
+  assert.match(root.innerHTML, />5 \/ 5</);
+  assert.ok(root.innerHTML.includes(`width:${finalLevelProgress * 100}%`));
   assert.match(root.innerHTML, /background:rgb\(104, 156, 112\)/);
 
   panel.setLevel({ number: 5, total: 5, progress: 1 });

@@ -1,5 +1,5 @@
 import { placeCorpse } from "../world/corpse.js";
-import { placeExit } from "../world/exit.js";
+import { isExitOpen, placeExit } from "../world/exit.js";
 import { generateMaze } from "../world/maze.js";
 import { generateWorld } from "../world/world.js";
 import { createActionAdapter } from "./actions/adapter.js";
@@ -10,6 +10,7 @@ import { createActionScheduler } from "./actions/scheduler.js";
 import { createCamera } from "./camera.js";
 import { createCombat } from "./combat.js";
 import { createEnemySystem, spawnMeatMonsters } from "./enemies/enemy-system.js";
+import { createExitController } from "./exit-controller.js";
 
 function levelSeed(seed, levelNumber, salt) {
   return (seed ^ Math.imul(levelNumber, salt)) >>> 0;
@@ -40,15 +41,16 @@ export function createLevelSession({
     defense: config.baseWallDefense,
     impactWear: config.wallImpactWear,
   });
-  placeExit(world, {
-    seed: (concreteMazeSeed ^ 0x9e3779b9) >>> 0,
-  });
-
   const player = {
     col: Math.floor(level.width / 2),
     row: Math.floor(level.height / 2),
     facing: "down",
   };
+  // A hidden exit does not reserve its cell: the hero may start on it.
+  const exitCell = placeExit(world, {
+    seed: (concreteMazeSeed ^ 0x9e3779b9) >>> 0,
+  });
+
   const movement = createMovement({ player, cellSize: config.cellSize });
   const enemySeed = (concreteMazeSeed ^ 0x6d2b79f5) >>> 0;
   const monsters = spawnMeatMonsters({
@@ -58,6 +60,12 @@ export function createLevelSession({
     seed: enemySeed,
     idPrefix: `level-${level.number}:meat-monster`,
   });
+  const exitController = createExitController({
+    cell: exitCell,
+    monsterIds: monsters.map(({ id }) => id),
+    revealDuration: config.actionCosts.step,
+  });
+  let frameStartedAt = 0;
   const combat = createCombat({
     player,
     character,
@@ -66,7 +74,13 @@ export function createLevelSession({
     statWear,
     onPlayerDamage: onStatsDirty,
     onPlayerStatChange: onStatsDirty,
-    onMonsterDeath: (monster) => placeCorpse(world, monster),
+    onMonsterDeath: (event) => {
+      placeCorpse(world, event.monster);
+      exitController.onMonsterDeath({
+        ...event,
+        at: event.at === null ? null : frameStartedAt + event.at,
+      });
+    },
   });
   const enemies = createEnemySystem({
     world,
@@ -99,7 +113,7 @@ export function createLevelSession({
     costs: config.actionCosts,
     findEntryBlocker: enemies.findEntryBlocker,
   });
-  const reachedExit = () => Boolean(world.at(player.col, player.row)?.exit);
+  const reachedExit = () => isExitOpen(world.at(player.col, player.row));
   const scheduler = createActionScheduler({
     adapter,
     movement,
@@ -124,10 +138,12 @@ export function createLevelSession({
     player,
     monsters,
     reachedExit,
-    update(deltaUnits) {
-      scheduler.update(deltaUnits);
-      enemies.update(deltaUnits);
+    update({ dt, time }) {
+      frameStartedAt = time - dt;
+      scheduler.update(dt);
+      enemies.update(dt);
       combat.resolve();
+      exitController.advance(time);
     },
     updateCamera() { camera.update(); },
     get move() { return scheduler.move; },

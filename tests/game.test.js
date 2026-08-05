@@ -215,7 +215,8 @@ test("a player victory starts a step-long portal reveal", () => {
       monsterCount: 1,
       preserveGeneratedExit: true,
     });
-    const exitCell = state.world.cells.find((cell) => cell.exit !== null);
+    const exitCell = state.exitCell;
+    assert.equal(exitCell, state.world.at(exitCell.x, exitCell.y));
     const monster = state.monsters[0];
     state.player.facing = "right";
     monster.col = state.player.col + 1;

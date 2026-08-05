@@ -1,10 +1,12 @@
 // Rendering for semantic exit markers stored directly on world cells.
 
-import { getExitRevealProgress } from "../world/exit.js";
+import { EXIT_PHASES, getExitRevealProgress } from "../world/exit.js";
 
 const TAU = Math.PI * 2;
 const PULSE_PERIOD = 18;
 const ROTATION_PERIOD = 48;
+const ANNOUNCEMENT_START_SCALE = 1;
+const ANNOUNCEMENT_END_SCALE = 3;
 
 function drawPortal(ctx, x, y, cellSize, time, opacity) {
   const pulse = (Math.sin((time / PULSE_PERIOD) * TAU) + 1) / 2;
@@ -63,9 +65,12 @@ function drawPortal(ctx, x, y, cellSize, time, opacity) {
 export function drawExits(ctx, {
   cam,
   world,
+  exitCell,
   cellSize,
   viewCols,
   viewRows,
+  viewportWidth,
+  viewportHeight,
   time = 0,
 }) {
   const animationTime = Number.isFinite(time) ? time : 0;
@@ -89,4 +94,54 @@ export function drawExits(ctx, {
       );
     }
   }
+
+  drawRevealAnnouncement(ctx, {
+    exit: exitCell?.exit,
+    cellSize,
+    viewportWidth,
+    viewportHeight,
+    time: animationTime,
+  });
+}
+
+function drawRevealAnnouncement(ctx, {
+  exit,
+  cellSize,
+  viewportWidth,
+  viewportHeight,
+  time = 0,
+}) {
+  if (
+    exit?.kind !== "exit" ||
+    exit.phase !== EXIT_PHASES.REVEALING ||
+    !Number.isFinite(time) ||
+    !Number.isFinite(viewportWidth) ||
+    !Number.isFinite(viewportHeight) ||
+    !Number.isFinite(exit.revealStartedAt) ||
+    !Number.isFinite(exit.revealDuration) ||
+    exit.revealDuration <= 0
+  ) return;
+
+  const progress = (time - exit.revealStartedAt) / exit.revealDuration;
+  if (progress < 0 || progress >= 1) return;
+
+  const eased = 1 - ((1 - progress) ** 3);
+  const scale = (
+    ANNOUNCEMENT_START_SCALE +
+    (ANNOUNCEMENT_END_SCALE - ANNOUNCEMENT_START_SCALE) * eased
+  );
+  const opacity = 0.75 * (1 - progress);
+
+  ctx.save();
+  ctx.translate(viewportWidth / 2, viewportHeight / 2);
+  ctx.scale(scale, scale);
+  drawPortal(
+    ctx,
+    -cellSize * 0.5,
+    -cellSize * 0.56,
+    cellSize,
+    time,
+    opacity,
+  );
+  ctx.restore();
 }

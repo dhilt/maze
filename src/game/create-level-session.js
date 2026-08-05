@@ -135,6 +135,7 @@ export function createLevelSession({
   return {
     level,
     world,
+    exitCell,
     player,
     monsters,
     reachedExit,

@@ -1,7 +1,7 @@
 import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
 
 // The lunge arrives quickly and holds the flattened bite pose long enough to
-// read at the monster's five-unit attack duration.
+// read relative to the monster's configured attack duration.
 const ATTACK_FRAME_WEIGHTS = Object.freeze([130, 85, 55, 45, 155, 60, 90, 130]);
 const ATTACK_WEIGHT_TOTAL = ATTACK_FRAME_WEIGHTS.reduce(
   (sum, weight) => sum + weight,

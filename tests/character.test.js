@@ -19,6 +19,10 @@ test("creates a character with nested current and maximum stats", () => {
   }
   assert.ok(Number.isFinite(character.healthDrainSpeed));
   assert.ok(character.healthDrainSpeed > 0);
+  for (const cost of Object.values(character.actionCosts)) {
+    assert.ok(Number.isInteger(cost));
+    assert.ok(cost > 0);
+  }
 });
 
 test("merges partial stat overrides without dropping other defaults", () => {
@@ -27,6 +31,7 @@ test("merges partial stat overrides without dropping other defaults", () => {
     name: "Sir Test",
     stats: { health: 5 },
     statsMax: { health: 30 },
+    actionCosts: { step: 3 },
     healthDrainSpeed: 50,
   });
 
@@ -37,7 +42,24 @@ test("merges partial stat overrides without dropping other defaults", () => {
     assert.equal(character.stats[stat], baseline.stats[stat]);
     assert.equal(character.statsMax[stat], baseline.statsMax[stat]);
   }
+  assert.equal(character.actionCosts.step, 3);
+  for (const action of ["turn", "attack", "consume"]) {
+    assert.equal(character.actionCosts[action], baseline.actionCosts[action]);
+  }
   assert.equal(character.healthDrainSpeed, 50);
+});
+
+test("characters own independent action costs", () => {
+  const first = createCharacter({ actionCosts: { step: 3 } });
+  const second = createCharacter({ actionCosts: { step: 7 } });
+
+  assert.notEqual(first.actionCosts, second.actionCosts);
+  assert.equal(first.actionCosts.step, 3);
+  assert.equal(second.actionCosts.step, 7);
+  assert.throws(
+    () => createCharacter({ actionCosts: { attack: 0 } }),
+    /attack action cost/,
+  );
 });
 
 test("damage and healing clamp nested health", () => {

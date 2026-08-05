@@ -7,14 +7,13 @@ import { generateWorld } from "../src/world/world.js";
 
 function setup({ monsterCount = 5, revealDuration = 5 } = {}) {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
-  const cell = placeExit(world, { seed: 1 });
+  const cell = placeExit(world, { seed: 1, revealDuration });
   const monsters = Array.from({ length: monsterCount }, (_, index) => ({
     id: `m${index + 1}`,
   }));
   const controller = createExitController({
     cell,
     monsterIds: monsters.map(({ id }) => id),
-    revealDuration,
   });
   return { cell, monsters, controller };
 }

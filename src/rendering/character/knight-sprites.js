@@ -1,6 +1,6 @@
 import { KNIGHT_ASSET_PACK } from "../../assets/packs/knight.js";
 
-export const KNIGHT_IDLE_FRAME_UNITS = 3;
+export const KNIGHT_IDLE_FRAME_UNITS = 6;
 
 // Contact is held longer so the impact remains readable without changing cost.
 const ATTACK_FRAME_WEIGHTS = Object.freeze([1, 1, 1, 1, 4.5, 1, 1, 1, 1]);

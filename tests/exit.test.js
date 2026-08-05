@@ -56,12 +56,11 @@ test("a one-cell world uses its only cell as the exit", () => {
   const exit = placeExit(world, { seed: 42 });
 
   assert.equal(exit, world.at(0, 0));
-  assert.deepEqual(world.at(0, 0).exit, {
-    kind: "exit",
-    phase: EXIT_PHASES.HIDDEN,
-    revealStartedAt: null,
-    revealDuration: null,
-  });
+  assert.equal(exit.exit.kind, "exit");
+  assert.equal(exit.exit.phase, EXIT_PHASES.HIDDEN);
+  assert.equal(exit.exit.revealStartedAt, null);
+  assert.ok(Number.isFinite(exit.exit.revealDuration));
+  assert.ok(exit.exit.revealDuration > 0);
 });
 
 test("a hidden exit may occupy the hero's starting cell", () => {

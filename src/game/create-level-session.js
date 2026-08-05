@@ -63,7 +63,6 @@ export function createLevelSession({
   const exitController = createExitController({
     cell: exitCell,
     monsterIds: monsters.map(({ id }) => id),
-    revealDuration: config.actionCosts.step,
   });
   let frameStartedAt = 0;
   const combat = createCombat({
@@ -87,9 +86,6 @@ export function createLevelSession({
     player,
     getPlayerMove: () => movement.move,
     monsters,
-    stepCost: config.enemies.meatMonster.stepCost,
-    turnCost: config.actionCosts.turn,
-    attackCost: config.actionCosts.attack,
     seed: (enemySeed ^ 0x85ebca6b) >>> 0,
     onImpact: combat.queueImpact,
   });
@@ -110,7 +106,6 @@ export function createLevelSession({
     world,
     player,
     character,
-    costs: config.actionCosts,
     findEntryBlocker: enemies.findEntryBlocker,
   });
   const reachedExit = () => isExitOpen(world.at(player.col, player.row));

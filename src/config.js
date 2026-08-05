@@ -1,23 +1,10 @@
-export const VERSION = "0.67";
+export const VERSION = "0.68";
 
 // Physical seconds are converted to logical game-time units before they reach
-// the action bus. At normal speed 1 unit lasts 100 ms.
+// the action bus. At normal speed 1 unit lasts 50 ms.
 const GAME_TIME = Object.freeze({
-  secondsPerUnit: 0.1,
+  secondsPerUnit: 0.04,
   speed: 1,
-});
-
-// Integer costs in logical game-time units. A blocked move toward a new facing
-// resolves to a turn; repeating the current facing is a cancelled no-op.
-const ACTION_COSTS = Object.freeze({
-  step: 5,
-  turn: 1,
-  attack: 5,
-  consume: 10,
-});
-
-const ENEMIES = Object.freeze({
-  meatMonster: Object.freeze({ stepCost: 8 }),
 });
 
 export const GAME_CONFIG = Object.freeze({
@@ -26,8 +13,6 @@ export const GAME_CONFIG = Object.freeze({
   viewRows: 7,
   cameraMargin: 2,
   gameTime: GAME_TIME,
-  actionCosts: ACTION_COSTS,
-  enemies: ENEMIES,
   debug: false,
   floorStyle: "crypt",
   worldSeed: 1,

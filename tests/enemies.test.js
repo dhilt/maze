@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createCharacter } from "../src/entities/character.js";
 import {
   createMeatMonster,
   createMeatMonsterStats,
@@ -14,6 +15,7 @@ import {
   MEAT_MONSTER_MIN_STATS,
 } from "../src/entities/meat-monster.js";
 import { createActionAdapter } from "../src/game/actions/adapter.js";
+import { ATTACK_CONTACT_PROGRESS } from "../src/game/actions/attack-timing.js";
 import {
   createEnemySystem,
   spawnMeatMonsters,
@@ -25,9 +27,6 @@ function createSystem({
   world,
   player,
   monsters,
-  stepCost = 5,
-  turnCost = 1,
-  attackCost = 5,
   seed = 1,
   directionChangeChance = 0,
   playerMove = null,
@@ -38,9 +37,6 @@ function createSystem({
     player,
     getPlayerMove: () => playerMove,
     monsters,
-    stepCost,
-    turnCost,
-    attackCost,
     seed,
     directionChangeChance,
     onImpact,
@@ -59,15 +55,30 @@ test("meat monster stats use the configured inclusive intervals", () => {
   assert.ok(MEAT_MONSTER_MIN_STATS.morale > 0);
 });
 
-test("every meat monster owns independent current and maximum stats", () => {
-  const first = createMeatMonster({ id: "m1", col: 0, row: 0, random: () => 0.5 });
-  const second = createMeatMonster({ id: "m2", col: 1, row: 0, random: () => 0.5 });
+test("every meat monster owns independent stats and action costs", () => {
+  const first = createMeatMonster({
+    id: "m1",
+    col: 0,
+    row: 0,
+    random: () => 0.5,
+    actionCosts: { step: 3 },
+  });
+  const second = createMeatMonster({
+    id: "m2",
+    col: 1,
+    row: 0,
+    random: () => 0.5,
+    actionCosts: { step: 7 },
+  });
   const firstInitial = { ...first.stats };
   const secondInitial = { ...second.stats };
 
   assert.deepEqual(first.stats, first.statsMax);
   assert.notEqual(first.stats, first.statsMax);
   assert.notEqual(first.stats, second.stats);
+  assert.notEqual(first.actionCosts, second.actionCosts);
+  assert.equal(first.actionCosts.step, 3);
+  assert.equal(second.actionCosts.step, 7);
   assert.equal(first.impactWear, MEAT_MONSTER_IMPACT_WEAR);
   first.stats.health = 0;
   assert.equal(first.statsMax.health, firstInitial.health);
@@ -188,9 +199,15 @@ test("a monster may spawn on a hidden exit cell", () => {
   assert.deepEqual([monsters[0].col, monsters[0].row], [1, 0]);
 });
 
-test("a moving monster frees its source but reserves its destination", () => {
+test("a moving monster uses its own step cost and reserves only its destination", () => {
   const world = generateWorld({ width: 4, height: 1, seed: 1 });
-  const monster = createMeatMonster({ id: "m1", col: 1, row: 0, facing: "right" });
+  const monster = createMeatMonster({
+    id: "m1",
+    col: 1,
+    row: 0,
+    facing: "right",
+    actionCosts: { step: 7 },
+  });
   const system = createSystem({
     world,
     player: { col: 0, row: 0 },
@@ -200,6 +217,7 @@ test("a moving monster frees its source but reserves its destination", () => {
   system.update(2.5);
 
   assert.deepEqual([monster.move.dx, monster.move.dy], [1, 0]);
+  assert.equal(monster.move.timeCost, 7);
   assert.equal(monster.move.elapsed, 2.5);
   assert.equal(system.findEntryBlocker(0, 0, 1, 0), null);
   assert.equal(system.findEntryBlocker(3, 0, 2, 0), monster);
@@ -232,7 +250,7 @@ test("hero and monster may follow each other into a vacated source cell", () => 
   const adapter = createActionAdapter({
     world,
     player,
-    costs: { step: 5, turn: 1, attack: 5 },
+    character: createCharacter({ actionCosts: { step: 5 } }),
     findEntryBlocker: system.findEntryBlocker,
   });
   assert.equal(adapter.adapt("right").kind, "step", "hero follows monster");
@@ -265,11 +283,13 @@ test("a frontal collision attacks, while a side collision only turns", () => {
     col: 0,
     row: 0,
     facing: "right",
+    actionCosts: { attack: 7 },
   });
   const frontalSystem = createSystem({ world, player, monsters: [frontal] });
   frontalSystem.update(1);
   assert.equal(frontal.move, null);
   assert.equal(frontal.attack.kind, "attack");
+  assert.equal(frontal.attack.timeCost, 7);
   assert.deepEqual(frontal.attack.targetCell, { col: 1, row: 0 });
 
   const sideways = createMeatMonster({
@@ -277,11 +297,13 @@ test("a frontal collision attacks, while a side collision only turns", () => {
     col: 0,
     row: 0,
     facing: "left",
+    actionCosts: { turn: 2 },
   });
   const sidewaysSystem = createSystem({ world, player, monsters: [sideways] });
   sidewaysSystem.update(1);
   assert.equal(sideways.attack, null);
-  assert.equal(sideways.move, null);
+  assert.equal(sideways.move.kind, "turn");
+  assert.equal(sideways.move.timeCost, 2);
   assert.equal(sideways.facing, "right");
 });
 
@@ -298,7 +320,7 @@ test("the hero can attack a retreating monster without forcing a counterattack",
   const adapter = createActionAdapter({
     world,
     player,
-    costs: { step: 5, turn: 1, attack: 5 },
+    character: createCharacter({ actionCosts: { attack: 5 } }),
     findEntryBlocker: system.findEntryBlocker,
   });
 
@@ -318,14 +340,15 @@ test("a monster keeps attacking while the hero remains in its frontal cell", () 
     facing: "right",
   });
   const system = createSystem({ world, player, monsters: [monster] });
+  const attackCost = monster.actionCosts.attack;
 
-  system.update(16);
+  system.update(attackCost * 3 + 1);
   assert.deepEqual([monster.col, monster.row], [1, 0]);
   assert.equal(monster.attack.kind, "attack");
   assert.equal(monster.attack.elapsed, 1);
 
   player.col = 3;
-  system.update(4); // the already-started attack still finishes
+  system.update(attackCost - 1); // the already-started attack still finishes
   assert.equal(monster.attack, null);
   system.update(1);
   assert.equal(monster.move.kind, "step");
@@ -345,16 +368,17 @@ test("a monster queues one hit at the shared contact peak", () => {
       impact.strike.hitResolved = true;
     },
   });
+  const contactElapsed = monster.actionCosts.attack * ATTACK_CONTACT_PROGRESS;
+  const epsilon = 0.1;
 
-  system.update(2.4);
+  system.update(contactElapsed - epsilon);
   assert.equal(impacts.length, 0);
-  system.update(0.2);
-  system.update(2);
+  system.update(epsilon * 2);
 
   assert.equal(impacts.length, 1);
-  assert.ok(Math.abs(impacts[0].at - 0.1) < 1e-9);
-  assert.deepEqual({ ...impacts[0], at: 0.1 }, {
-    at: 0.1,
+  assert.ok(Math.abs(impacts[0].at - epsilon) < 1e-9);
+  assert.deepEqual({ ...impacts[0], at: epsilon }, {
+    at: epsilon,
     attacker: { type: "entity", id: "m1" },
     targetCell: { col: 0, row: 0 },
     strike: undefined,
@@ -382,11 +406,17 @@ test("monster reservations prevent overlap and position swaps", () => {
   const world = generateWorld({ width: 5, height: 3, seed: 1 });
   const player = { col: 2, row: 1 };
   const monsters = [
-    createMeatMonster({ id: "m1", col: 0, row: 0, facing: "right" }),
-    createMeatMonster({ id: "m2", col: 1, row: 0, facing: "left" }),
-    createMeatMonster({ id: "m3", col: 4, row: 2, facing: "up" }),
+    createMeatMonster({
+      id: "m1", col: 0, row: 0, facing: "right", actionCosts: { step: 3 },
+    }),
+    createMeatMonster({
+      id: "m2", col: 1, row: 0, facing: "left", actionCosts: { step: 3 },
+    }),
+    createMeatMonster({
+      id: "m3", col: 4, row: 2, facing: "up", actionCosts: { step: 3 },
+    }),
   ];
-  const system = createSystem({ world, player, monsters, stepCost: 3, seed: 7 });
+  const system = createSystem({ world, player, monsters, seed: 7 });
 
   for (let frame = 0; frame < 80; frame += 1) {
     system.update(0.5);

@@ -1,4 +1,4 @@
-// Character model — plain, serialisable state kept separate from its helpers.
+import { createActionCosts } from "../game/actions/action-costs.js";
 
 const DEFAULT_STATS = Object.freeze({
   health: 20,
@@ -14,15 +14,28 @@ const DEFAULT_STATS_MAX = Object.freeze({
   morale: 10,
 });
 
+const DEFAULT_ACTION_COSTS = Object.freeze({
+  step: 10,
+  turn: 1,
+  attack: 10,
+  consume: 20,
+});
+
 export function createCharacter(overrides = {}) {
-  const { stats = {}, statsMax = {}, ...characterOverrides } = overrides;
+  const {
+    stats = {},
+    statsMax = {},
+    actionCosts = {},
+    ...characterOverrides
+  } = overrides;
 
   return {
     name: "Hero",
     stats: { ...DEFAULT_STATS, ...stats },
     statsMax: { ...DEFAULT_STATS_MAX, ...statsMax },
+    actionCosts: createActionCosts(DEFAULT_ACTION_COSTS, actionCosts),
     // Game-time units per -1 health tick. 0 or negative disables the drain.
-    healthDrainSpeed: 200,
+    healthDrainSpeed: 400,
     ...characterOverrides,
   };
 }

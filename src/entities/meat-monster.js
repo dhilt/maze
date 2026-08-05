@@ -1,3 +1,5 @@
+import { createActionCosts } from "../game/actions/action-costs.js";
+
 const FACINGS = new Set(["up", "down", "left", "right"]);
 
 export const MEAT_MONSTER_KIND = "meat-monster";
@@ -20,6 +22,12 @@ export const MEAT_MONSTER_MAX_STATS = Object.freeze({
   attack: 7,
   defense: 5,
   morale: 1,
+});
+
+const DEFAULT_ACTION_COSTS = Object.freeze({
+  step: 16,
+  turn: 1,
+  attack: 10,
 });
 
 export function createMeatMonsterStats(random) {
@@ -49,6 +57,7 @@ export function createMeatMonster({
   row,
   facing = "down",
   random = Math.random,
+  actionCosts = {},
 }) {
   if (typeof id !== "string" || id.length === 0) {
     throw new Error("A meat monster requires a non-empty id");
@@ -68,6 +77,7 @@ export function createMeatMonster({
     facing,
     stats: concreteStats,
     statsMax: { ...concreteStats },
+    actionCosts: createActionCosts(DEFAULT_ACTION_COSTS, actionCosts),
     nutrition: randomInteger(
       random,
       MEAT_MONSTER_MIN_NUTRITION,

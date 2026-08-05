@@ -72,22 +72,10 @@ export function createEnemySystem({
   player,
   getPlayerMove = () => null,
   monsters,
-  stepCost,
-  turnCost,
-  attackCost,
   seed,
   directionChangeChance = MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
   onImpact,
 }) {
-  if (!Number.isFinite(stepCost) || stepCost <= 0) {
-    throw new Error("Enemy stepCost must be a positive number");
-  }
-  if (!Number.isFinite(turnCost) || turnCost <= 0) {
-    throw new Error("Enemy turnCost must be a positive number");
-  }
-  if (!Number.isFinite(attackCost) || attackCost <= 0) {
-    throw new Error("Enemy attackCost must be a positive number");
-  }
   if (
     !Number.isFinite(directionChangeChance) ||
     directionChangeChance < 0 ||
@@ -147,14 +135,14 @@ export function createEnemySystem({
           dx: 0,
           dy: 0,
           elapsed: 0,
-          timeCost: turnCost,
+          timeCost: monster.actionCosts.turn,
           facing: direction.id,
         };
       }
       return {
         kind: "attack",
         elapsed: 0,
-        timeCost: attackCost,
+        timeCost: monster.actionCosts.attack,
         hitResolved: false,
         targetCell: { col, row },
       };
@@ -165,7 +153,7 @@ export function createEnemySystem({
       dx: direction.dx,
       dy: direction.dy,
       elapsed: 0,
-      timeCost: stepCost,
+      timeCost: monster.actionCosts.step,
       facing: direction.id,
     };
   }

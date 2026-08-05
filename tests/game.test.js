@@ -15,8 +15,6 @@ const TEST_CONFIG = Object.freeze({
   viewRows: 5,
   cameraMargin: 1,
   gameTime: Object.freeze({ secondsPerUnit: 0.1, speed: 1 }),
-  actionCosts: Object.freeze({ step: 5, turn: 1, attack: 5, consume: 10 }),
-  enemies: Object.freeze({ meatMonster: Object.freeze({ stepCost: 8 }) }),
   debug: false,
   floorStyle: "stone",
   worldSeed: 11,
@@ -25,6 +23,13 @@ const TEST_CONFIG = Object.freeze({
   baseWallHealth: 20,
   baseWallDefense: 2,
   wallImpactWear: 1,
+});
+
+const TEST_ACTION_COSTS = Object.freeze({
+  step: 5,
+  turn: 1,
+  attack: 5,
+  consume: 10,
 });
 
 function createContext() {
@@ -148,6 +153,7 @@ function createTestGame({
     name: "Integration Hero",
     stats: { health, attack: 7, defense: 5, morale: 8 },
     statsMax: { health: 20, attack: 7, defense: 5, morale: 10 },
+    actionCosts: TEST_ACTION_COSTS,
     healthDrainSpeed: 100,
   });
   const game = createGame({
@@ -172,6 +178,13 @@ function createTestGame({
   });
 
   const state = game.getState();
+  for (const monster of state.monsters) {
+    Object.assign(monster.actionCosts, {
+      step: TEST_ACTION_COSTS.step,
+      turn: TEST_ACTION_COSTS.turn,
+      attack: TEST_ACTION_COSTS.attack,
+    });
+  }
   if (!preserveGeneratedExit) {
     for (const cell of state.world.cells) cell.exit = null;
     state.world.at(exitX, exitY).exit = {
@@ -206,7 +219,7 @@ test("the game spawns and advances the configured meat monsters", () => {
   });
 });
 
-test("a player victory starts a step-long portal reveal", () => {
+test("a player victory starts the portal's own reveal duration", () => {
   withGameEnvironment((environment) => {
     const { game, state, outcomes } = createTestGame({
       speed: 2.5,
@@ -241,7 +254,11 @@ test("a player victory starts a step-long portal reveal", () => {
     assert.equal(exitCell.exit.phase, EXIT_PHASES.REVEALING);
     assert.deepEqual(outcomes, [], "a revealing portal is not usable yet");
 
-    environment.runFrame(300);
+    let frameOffsetMs = 300;
+    for (let guard = 0; guard < 10 && exitCell.exit.phase === EXIT_PHASES.REVEALING; guard++) {
+      environment.runFrame(frameOffsetMs);
+      frameOffsetMs += 100;
+    }
     assert.equal(exitCell.exit.phase, EXIT_PHASES.OPEN);
     assert.deepEqual(outcomes, ["escaped"]);
     game.stop();
@@ -328,7 +345,7 @@ test("the hero can hit a passing monster without receiving a counterattack", () 
       dx: -1,
       dy: 0,
       elapsed: 0,
-      timeCost: TEST_CONFIG.enemies.meatMonster.stepCost,
+      timeCost: monster.actionCosts.step,
       facing: "left",
     };
     Object.assign(monster.stats, { health: 20, attack: 7, defense: 5 });

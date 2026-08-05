@@ -3,8 +3,8 @@
 import { EXIT_PHASES, getExitRevealProgress } from "../world/exit.js";
 
 const TAU = Math.PI * 2;
-const PULSE_PERIOD = 18;
-const ROTATION_PERIOD = 48;
+const PULSE_PERIOD = 36;
+const ROTATION_PERIOD = 96;
 const ANNOUNCEMENT_START_SCALE = 1;
 const ANNOUNCEMENT_END_SCALE = 3;
 

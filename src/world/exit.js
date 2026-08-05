@@ -39,7 +39,11 @@ export function getExitRevealProgress(cell, time) {
 // the cell while hidden, so its position survives serialisation.
 export function placeExit(world, {
   seed = world.seed,
+  revealDuration = 10,
 } = {}) {
+  if (!Number.isFinite(revealDuration) || revealDuration <= 0) {
+    throw new Error("Exit revealDuration must be a positive number");
+  }
   for (const cell of world.cells) cell.exit = null;
 
   const candidates = edgeCells(world);
@@ -51,7 +55,7 @@ export function placeExit(world, {
     kind: "exit",
     phase: EXIT_PHASES.HIDDEN,
     revealStartedAt: null,
-    revealDuration: null,
+    revealDuration,
   };
   return exit;
 }

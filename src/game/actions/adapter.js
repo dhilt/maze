@@ -19,15 +19,17 @@ export function createActionAdapter({
   world,
   player,
   character,
-  costs,
   findEntryBlocker = () => null,
 }) {
+  if (!character?.actionCosts) {
+    throw new Error("Action adapter requires character action costs");
+  }
   function attackCell(col, row) {
     return {
       kind: "attack",
       dx: 0,
       dy: 0,
-      timeCost: costs.attack,
+      timeCost: character.actionCosts.attack,
       facing: null,
       targetCell: { col, row },
     };
@@ -45,7 +47,7 @@ export function createActionAdapter({
       ) return null;
       return {
         kind: "consume",
-        timeCost: costs.consume,
+        timeCost: character.actionCosts.consume,
         target: {
           col: player.col,
           row: player.row,
@@ -62,7 +64,7 @@ export function createActionAdapter({
           kind: "wallAttack",
           dx: 0,
           dy: 0,
-          timeCost: costs.attack,
+          timeCost: character.actionCosts.attack,
           facing: null,
           target: { x: player.col, y: player.row, dx, dy },
         };
@@ -91,13 +93,25 @@ export function createActionAdapter({
     }
 
     if (dx !== 0 || dy !== 0) {
-      return { kind: "step", dx, dy, timeCost: costs.step, facing: desired };
+      return {
+        kind: "step",
+        dx,
+        dy,
+        timeCost: character.actionCosts.step,
+        facing: desired,
+      };
     }
     // Looking into the same obstruction changes no actor state. Drop that intent
     // without occupying the action bus; continuous world time still advances.
     if (player.facing === desired) return null;
     // Transformed: a blocked move becomes a short in-place turn/bump.
-    return { kind: "turn", dx: 0, dy: 0, timeCost: costs.turn, facing: desired };
+    return {
+      kind: "turn",
+      dx: 0,
+      dy: 0,
+      timeCost: character.actionCosts.turn,
+      facing: desired,
+    };
   }
 
   return { adapt };

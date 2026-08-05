@@ -6,15 +6,11 @@ import { createGameTime } from "../src/game/time.js";
 
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 
-test("configured time scale and action costs satisfy their runtime invariants", () => {
+test("configured game time satisfies its runtime invariants", () => {
   assert.ok(Number.isFinite(GAME_CONFIG.gameTime.secondsPerUnit));
   assert.ok(GAME_CONFIG.gameTime.secondsPerUnit > 0);
   assert.ok(Number.isFinite(GAME_CONFIG.gameTime.speed));
   assert.ok(GAME_CONFIG.gameTime.speed > 0);
-  for (const cost of Object.values(GAME_CONFIG.actionCosts)) {
-    assert.ok(Number.isInteger(cost));
-    assert.ok(cost > 0);
-  }
 });
 
 test("game time converts physical seconds into logical units", () => {

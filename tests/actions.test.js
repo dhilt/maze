@@ -12,8 +12,7 @@ function makeAdapter(world, player, findEntryBlocker, character) {
   return createActionAdapter({
     world,
     player,
-    character,
-    costs: COSTS,
+    character: character ?? createCharacter({ actionCosts: COSTS }),
     findEntryBlocker,
   });
 }
@@ -26,6 +25,24 @@ test("a clear direction resolves to a step", () => {
   assert.deepEqual([a.dx, a.dy], [1, 0]);
   assert.equal(a.timeCost, 5);
   assert.equal(a.facing, "right");
+});
+
+test("actions capture the character's current cost when they resolve", () => {
+  const world = generateWorld({ width: 5, height: 5, seed: 1 });
+  const character = createCharacter({ actionCosts: { step: 3 } });
+  const adapter = makeAdapter(
+    world,
+    { col: 2, row: 2, facing: "down" },
+    undefined,
+    character,
+  );
+
+  const first = adapter.adapt("right");
+  character.actionCosts.step = 7;
+  const second = adapter.adapt("right");
+
+  assert.equal(first.timeCost, 3);
+  assert.equal(second.timeCost, 7);
 });
 
 test("a wall transforms a move into a one-unit turn", () => {
@@ -129,7 +146,10 @@ test("attack facing the world perimeter resolves against an indestructible wall"
 test("consume resolves only for an injured hero with morale standing on a corpse", () => {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
   const player = { col: 0, row: 0, facing: "down" };
-  const character = createCharacter({ stats: { health: 15, morale: 1 } });
+  const character = createCharacter({
+    stats: { health: 15, morale: 1 },
+    actionCosts: COSTS,
+  });
   const corpse = {
     id: "corpse-m1",
     kind: "corpse",

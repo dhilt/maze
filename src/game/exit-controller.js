@@ -5,7 +5,6 @@ export const EXIT_REVEAL_RATIO = 0.5;
 export function createExitController({
   cell,
   monsterIds,
-  revealDuration,
   revealRatio = EXIT_REVEAL_RATIO,
 }) {
   if (cell?.exit?.kind !== "exit") {
@@ -14,7 +13,7 @@ export function createExitController({
   if (!Array.isArray(monsterIds)) {
     throw new Error("Exit controller requires initial monster ids");
   }
-  if (!Number.isFinite(revealDuration) || revealDuration <= 0) {
+  if (!Number.isFinite(cell.exit.revealDuration) || cell.exit.revealDuration <= 0) {
     throw new Error("Exit revealDuration must be a positive number");
   }
   if (!Number.isFinite(revealRatio) || revealRatio < 0 || revealRatio > 1) {
@@ -28,7 +27,6 @@ export function createExitController({
   const exit = cell.exit;
   const initialMonsterCount = remaining.size;
   const revealAtOrBelow = Math.floor(initialMonsterCount * revealRatio);
-  exit.revealDuration = revealDuration;
 
   function onMonsterDeath({ monster, killer, at }) {
     if (killer !== "player" || !remaining.has(monster?.id)) return false;

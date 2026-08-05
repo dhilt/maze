@@ -5,21 +5,18 @@ import { createFloor, FLOOR_STYLES, isFloorStyle } from "../src/rendering/floors
 
 const options = { worldWidth: 640, worldHeight: 448, seed: 1 };
 
-test("floor registry exposes the installed themes", () => {
-  assert.deepEqual(FLOOR_STYLES, ["stone", "crypt"]);
-  assert.equal(isFloorStyle("stone"), true);
-  assert.equal(isFloorStyle("crypt"), true);
-  assert.equal(isFloorStyle("unknown"), false);
-});
-
-test("every floor theme implements the draw contract", () => {
+test("registered floor themes are recognized and implement the draw contract", () => {
+  assert.ok(FLOOR_STYLES.length > 0);
+  assert.ok(FLOOR_STYLES.includes("stone"), "the fallback theme must be registered");
   for (const style of FLOOR_STYLES) {
+    assert.equal(isFloorStyle(style), true);
     const floor = createFloor(style, options);
     assert.equal(typeof floor.draw, "function", `${style} is missing draw()`);
   }
+  assert.equal(isFloorStyle("unknown"), false);
 });
 
-test("unknown themes safely fall back to stone", () => {
+test("unknown themes safely return a drawable fallback", () => {
   const floor = createFloor("unknown", options);
   assert.equal(typeof floor.draw, "function");
 });

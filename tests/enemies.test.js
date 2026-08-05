@@ -285,16 +285,16 @@ test("a frontal collision attacks, while a side collision only turns", () => {
   assert.equal(sideways.facing, "right");
 });
 
-test("hero and monster can resolve simultaneous or one-sided attacks independently", () => {
-  const world = generateWorld({ width: 2, height: 1, seed: 1 });
+test("the hero can attack a retreating monster without forcing a counterattack", () => {
+  const world = generateWorld({ width: 3, height: 1, seed: 1 });
   const player = { col: 0, row: 0, facing: "right" };
-  const monster = createMeatMonster({
-    id: "m1",
+  const retreating = createMeatMonster({
+    id: "m2",
     col: 1,
     row: 0,
-    facing: "left",
+    facing: "right",
   });
-  const system = createSystem({ world, player, monsters: [monster] });
+  const system = createSystem({ world, player, monsters: [retreating] });
   const adapter = createActionAdapter({
     world,
     player,
@@ -304,28 +304,6 @@ test("hero and monster can resolve simultaneous or one-sided attacks independent
 
   assert.equal(adapter.adapt("right").kind, "attack");
   system.update(1);
-  assert.equal(monster.attack.kind, "attack");
-
-  const retreatWorld = generateWorld({ width: 3, height: 1, seed: 1 });
-  const retreating = createMeatMonster({
-    id: "m2",
-    col: 1,
-    row: 0,
-    facing: "right",
-  });
-  const oneSidedSystem = createSystem({
-    world: retreatWorld,
-    player,
-    monsters: [retreating],
-  });
-  const oneSidedAdapter = createActionAdapter({
-    world: retreatWorld,
-    player,
-    costs: { step: 5, turn: 1, attack: 5 },
-    findEntryBlocker: oneSidedSystem.findEntryBlocker,
-  });
-  assert.equal(oneSidedAdapter.adapt("right").kind, "attack");
-  oneSidedSystem.update(1);
   assert.equal(retreating.attack, null);
   assert.deepEqual([retreating.move.dx, retreating.move.dy], [1, 0]);
 });

@@ -14,10 +14,14 @@ export function createGame({
   statsRoot,
   debugControl,
   config,
+  assets,
   character = createCharacter({ name: "Hero" }),
   levelBus = createLevelBus(),
   onFinish,
 }) {
+  if (typeof assets?.get !== "function") {
+    throw new Error("Game requires preloaded assets");
+  }
   const ctx = canvas.getContext("2d");
   canvas.width = config.viewCols * config.cellSize;
   canvas.height = config.viewRows * config.cellSize;
@@ -29,6 +33,7 @@ export function createGame({
     margin: config.cameraMargin,
     debug: config.debug,
     floorStyle: config.floorStyle,
+    assets,
   });
   const statWear = createStatWear({ character });
   const statsPanel = createStatsPanel(statsRoot);

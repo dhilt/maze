@@ -41,6 +41,25 @@ h1 {
   line-height: 0;
 }
 
+#loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(230, 230, 230, 0.72);
+  font-size: 14px;
+  line-height: normal;
+}
+
+#loading[hidden] {
+  display: none;
+}
+
+#loading.is-error {
+  color: #e18484;
+}
+
 canvas {
   background: var(--surface);
   border-radius: 12px;

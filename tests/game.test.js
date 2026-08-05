@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createAssetBundle } from "../src/assets/asset-pack.js";
+import { KNIGHT_ASSET_PACK } from "../src/assets/packs/knight.js";
+import { MEAT_MONSTER_ASSET_PACK } from "../src/assets/packs/meat-monster.js";
 import { createCharacter } from "../src/entities/character.js";
 import { createGame } from "../src/game/game.js";
 import { EXIT_PHASES } from "../src/world/exit.js";
@@ -42,6 +45,21 @@ function keyEvent(type, code) {
   return event;
 }
 
+function createTestAssets() {
+  const image = { complete: false, naturalWidth: 0 };
+  const bundles = new Map([
+    KNIGHT_ASSET_PACK,
+    MEAT_MONSTER_ASSET_PACK,
+  ].map((pack) => [pack.id, createAssetBundle(pack, () => image)]));
+  return {
+    get(id) {
+      const bundle = bundles.get(id);
+      if (!bundle) throw new Error(`Unknown test asset pack: ${id}`);
+      return bundle;
+    },
+  };
+}
+
 function createTestLevelBus(levels) {
   let index = 0;
   let completed = false;
@@ -74,7 +92,6 @@ function createTestLevelBus(levels) {
 function withGameEnvironment(run) {
   const previous = {
     window: globalThis.window,
-    Image: globalThis.Image,
     requestAnimationFrame: globalThis.requestAnimationFrame,
     cancelAnimationFrame: globalThis.cancelAnimationFrame,
   };
@@ -85,10 +102,6 @@ function withGameEnvironment(run) {
   let cancels = 0;
 
   globalThis.window = target;
-  globalThis.Image = class FakeImage {
-    complete = false;
-    naturalWidth = 0;
-  };
   globalThis.requestAnimationFrame = (callback) => {
     nextFrame = callback;
     schedules += 1;
@@ -149,6 +162,7 @@ function createTestGame({
     },
     debugControl: { checked: false },
     character,
+    assets: createTestAssets(),
     levelBus: createTestLevelBus(testLevels),
     config: {
       ...TEST_CONFIG,

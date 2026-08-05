@@ -90,24 +90,26 @@ test("enemy rendering interpolates the same move state used by collision", () =>
   assert.deepEqual(ctx.images[0].slice(1), [-32, -32, 64, 64]);
 });
 
-test("a downward enemy attack uses the weighted lunge frames", () => {
-  const ctx = createContext();
-  drawEnemies(ctx, {
-    monsters: [{
-      id: "m1",
-      kind: "meat-monster",
-      col: 1,
-      row: 1,
-      facing: "down",
-      move: null,
-      attack: { kind: "attack", elapsed: 2.5, timeCost: 5 },
-    }],
-    cam: { px: 0, py: 0 },
-    cellSize: 64,
-    meatMonsterSprites: createSprites(),
-  });
+test("enemy attacks use the matching directional sprite at contact", () => {
+  for (const facing of ["down", "up", "left", "right"]) {
+    const ctx = createContext();
+    drawEnemies(ctx, {
+      monsters: [{
+        id: "m1",
+        kind: "meat-monster",
+        col: 1,
+        row: 1,
+        facing,
+        move: null,
+        attack: { kind: "attack", elapsed: 2.5, timeCost: 5 },
+      }],
+      cam: { px: 0, py: 0 },
+      cellSize: 64,
+      meatMonsterSprites: createSprites(),
+    });
 
-  assert.equal(ctx.images[0][0].id, "attack-down-4");
+    assert.equal(ctx.images[0][0].id, `attack-${facing}-4`);
+  }
 });
 
 test("a monster draws a compact health bar in a side-adjacent cell", () => {
@@ -198,48 +200,6 @@ test("a visible health bar relaxes for the configured delay after adjacency ends
   ctx.fills.length = 0;
   draw(10 + HEALTH_BAR_HIDE_DELAY_SECONDS);
   assert.equal(ctx.fills.length, 0);
-});
-
-test("an upward enemy attack uses the upward lunge sprites", () => {
-  const ctx = createContext();
-  drawEnemies(ctx, {
-    monsters: [{
-      id: "m1",
-      kind: "meat-monster",
-      col: 1,
-      row: 1,
-      facing: "up",
-      move: null,
-      attack: { kind: "attack", elapsed: 2.5, timeCost: 5 },
-    }],
-    cam: { px: 0, py: 0 },
-    cellSize: 64,
-    meatMonsterSprites: createSprites(),
-  });
-
-  assert.equal(ctx.images[0][0].id, "attack-up-4");
-});
-
-test("horizontal enemy attacks use their directional lunge sprites", () => {
-  for (const facing of ["left", "right"]) {
-    const ctx = createContext();
-    drawEnemies(ctx, {
-      monsters: [{
-        id: "m1",
-        kind: "meat-monster",
-        col: 1,
-        row: 1,
-        facing,
-        move: null,
-        attack: { kind: "attack", elapsed: 2.5, timeCost: 5 },
-      }],
-      cam: { px: 0, py: 0 },
-      cellSize: 64,
-      meatMonsterSprites: createSprites(),
-    });
-
-    assert.equal(ctx.images[0][0].id, `attack-${facing}-4`);
-  }
 });
 
 test("unknown enemy kinds are ignored by the enemy renderer", () => {

@@ -158,42 +158,30 @@ test("an unknown resolved kind throws instead of silently moving", () => {
   assert.throws(() => scheduler.update(0.1), /No executor for action kind: teleport/);
 });
 
-test("a wall attack uses the attack executor", () => {
-  const movement = makeExecutor();
-  const attack = makeExecutor();
-  const input = makeInput();
-  input.queue("attack");
-  const scheduler = createActionScheduler({
-    adapter: makeAdapter(resolveByKind({ attack: wallAttackOf })),
-    movement,
-    attack,
-    input,
-  });
+test("resolved action kinds route to their registered executors", () => {
+  for (const { id, resolve, executorName, kind } of [
+    { id: "attack", resolve: wallAttackOf, executorName: "attack", kind: "wallAttack" },
+    { id: "consume", resolve: consumeOf, executorName: "consume", kind: "consume" },
+  ]) {
+    const input = makeInput();
+    const executors = {
+      movement: makeExecutor(),
+      attack: makeExecutor(),
+      consume: makeExecutor(),
+    };
+    input.queue(id);
+    const scheduler = createActionScheduler({
+      adapter: makeAdapter(resolveByKind({ [id]: resolve })),
+      ...executors,
+      input,
+    });
 
-  scheduler.update(1);
+    scheduler.update(1);
 
-  assert.equal(attack.log.length, 1);
-  assert.equal(attack.log[0].kind, "wallAttack");
-  assert.equal(scheduler.attackState.kind, "wallAttack");
-});
-
-test("consume uses its own executor", () => {
-  const consume = makeExecutor();
-  const input = makeInput();
-  input.queue("consume");
-  const scheduler = createActionScheduler({
-    adapter: makeAdapter(resolveByKind({ consume: consumeOf })),
-    movement: makeExecutor(),
-    attack: makeExecutor(),
-    consume,
-    input,
-  });
-
-  scheduler.update(1);
-
-  assert.equal(consume.log.length, 1);
-  assert.equal(consume.log[0].kind, "consume");
-  assert.equal(scheduler.activeId, "consume");
+    assert.equal(executors[executorName].log.length, 1);
+    assert.equal(executors[executorName].log[0].kind, kind);
+    assert.equal(scheduler.activeId, id);
+  }
 });
 
 test("a held direction auto-repeats when the queue is empty", () => {

@@ -3,16 +3,15 @@
 // plus debug helpers (cell numbers, static-viewport outline).
 // Gets its sprites from the character renderer; gets plain state + camera from the game loop.
 
+import { KNIGHT_ASSET_PACK } from "../assets/packs/knight.js";
+import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
 import {
   KNIGHT_IDLE_FRAME_UNITS,
-  loadKnightSprites,
   selectAttackFrame,
 } from "./character/knight-sprites.js";
 import { drawExits } from "./exits.js";
 import { createEnemyRenderState, drawEnemies } from "./enemies.js";
-import { loadMeatMonsterSprites } from "./meat-monster-sprites.js";
 import { createFloor, isFloorStyle } from "./floors/index.js";
-import { loadCorpseSprites } from "./objects/corpse.js";
 import { drawObjects } from "./objects/index.js";
 import { drawWalls } from "./walls.js";
 
@@ -24,11 +23,16 @@ export function createRenderer(ctx, config) {
     viewCols: VC, viewRows: VR,
     debug,
     floorStyle = "crypt",
+    assets,
   } = config;
 
-  const KNIGHT_SPRITES = loadKnightSprites();
-  const MEAT_MONSTER_SPRITES = loadMeatMonsterSprites();
-  const OBJECT_SPRITES = { corpse: loadCorpseSprites() };
+  const knightAssets = assets.get(KNIGHT_ASSET_PACK.id);
+  const meatMonsterAssets = assets.get(MEAT_MONSTER_ASSET_PACK.id);
+  const KNIGHT_SPRITES = knightAssets.animations;
+  const MEAT_MONSTER_SPRITES = meatMonsterAssets.animations;
+  const OBJECT_SPRITES = {
+    corpse: { [MEAT_MONSTER_ASSET_PACK.id]: meatMonsterAssets.images.corpse },
+  };
   const ENEMY_RENDER_STATE = createEnemyRenderState();
   const W = VC * CELL;
   const H = VR * CELL;

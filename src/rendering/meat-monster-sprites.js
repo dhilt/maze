@@ -1,10 +1,4 @@
-const DIRECTIONS = Object.freeze(["down", "up", "left", "right"]);
-const ATTACK_DIRECTIONS = DIRECTIONS;
-const ASSET_ROOT = "./assets/enemies/meat-monster";
-const ASSET_REVISION = "meat-monster-1";
-
-export const MEAT_MONSTER_WALK_FRAME_COUNT = 4;
-export const MEAT_MONSTER_ATTACK_FRAME_COUNT = 8;
+import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
 
 // The lunge arrives quickly and holds the flattened bite pose long enough to
 // read at the monster's five-unit attack duration.
@@ -14,38 +8,9 @@ const ATTACK_WEIGHT_TOTAL = ATTACK_FRAME_WEIGHTS.reduce(
   0,
 );
 
-function loadImage(src) {
-  const img = new Image();
-  img.decoding = "async";
-  img.onerror = () => console.error(`Failed to load meat monster sprite: ${src}`);
-  img.src = src;
-  return img;
-}
-
-export function loadMeatMonsterSprites() {
-  const sprites = { walk: {}, attack: {} };
-  for (const direction of DIRECTIONS) {
-    sprites.walk[direction] = Array.from(
-      { length: MEAT_MONSTER_WALK_FRAME_COUNT },
-      (_, frame) => loadImage(
-        `${ASSET_ROOT}/walk/${direction}/${frame}.png?v=${ASSET_REVISION}`,
-      ),
-    );
-  }
-  for (const direction of ATTACK_DIRECTIONS) {
-    sprites.attack[direction] = Array.from(
-      { length: MEAT_MONSTER_ATTACK_FRAME_COUNT },
-      (_, frame) => loadImage(
-        `${ASSET_ROOT}/attack/${direction}/${frame}.png?v=${ASSET_REVISION}`,
-      ),
-    );
-  }
-  return sprites;
-}
-
 export function selectMeatMonsterWalkFrame(
   move,
-  frameCount = MEAT_MONSTER_WALK_FRAME_COUNT,
+  frameCount = MEAT_MONSTER_ASSET_PACK.animations.walk.frames,
 ) {
   const count = Math.max(1, Math.floor(frameCount));
   if (move?.kind !== "step") return 0;
@@ -58,7 +23,7 @@ export function selectMeatMonsterWalkFrame(
 
 export function selectMeatMonsterAttackFrame(
   attack,
-  frameCount = MEAT_MONSTER_ATTACK_FRAME_COUNT,
+  frameCount = MEAT_MONSTER_ASSET_PACK.animations.attack.frames,
 ) {
   const count = Math.max(1, Math.floor(frameCount));
   if (!attack || !Number.isFinite(attack.timeCost) || attack.timeCost <= 0) return 0;

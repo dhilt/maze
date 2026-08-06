@@ -15,12 +15,13 @@ test("configured game time satisfies its runtime invariants", () => {
 
 test("game time converts physical seconds into logical units", () => {
   const gameTime = createGameTime({ secondsPerUnit: 0.1, speed: 1 });
-  const tick = gameTime.advance({ dt: 0.05, time: 2.5 });
+  const tick = gameTime.advance({ dt: 0.05, time: 2.5, timestamp: 2500 });
 
   assert.ok(near(tick.dt, 0.5));
   assert.ok(near(tick.time, 0.5));
   assert.equal(tick.realDt, 0.05);
   assert.equal(tick.realTime, 2.5);
+  assert.equal(tick.realTimestamp, 2500);
 });
 
 test("global game time accumulates independently from physical time", () => {

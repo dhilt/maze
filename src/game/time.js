@@ -23,6 +23,7 @@ export function createGameTime({ secondsPerUnit, speed = 1 }) {
       time,
       realDt: realTick.dt,
       realTime: realTick.time,
+      realTimestamp: realTick.timestamp,
     };
   }
 

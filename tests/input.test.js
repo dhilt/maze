@@ -45,9 +45,21 @@ test("discrete presses drain once; repeats are ignored", () => {
   input.destroy();
 });
 
-test("Space is exposed as a held attack until released", () => {
+test("system repeat cannot take direction priority from a newer axis", () => {
   const target = createTarget();
   const input = createKeyboardInput(target);
+
+  target.dispatch("keydown", { code: "ArrowUp" });
+  target.dispatch("keydown", { code: "ArrowRight" });
+  target.dispatch("keydown", { code: "ArrowUp", repeat: true });
+
+  assert.equal(input.heldDirection(), "right");
+  input.destroy();
+});
+
+test("Space is exposed as a held attack until released", () => {
+  const target = createTarget();
+  const input = createKeyboardInput(target, { directionHoldDelayMs: 0 });
 
   target.dispatch("keydown", { code: "ArrowRight" });
   target.dispatch("keydown", { code: "Space" });
@@ -55,6 +67,21 @@ test("Space is exposed as a held attack until released", () => {
 
   target.dispatch("keyup", { code: "Space" });
   assert.equal(input.heldAction(), "right");
+
+  target.dispatch("keyup", { code: "ArrowRight" });
+  assert.equal(input.heldAction(), null);
+  input.destroy();
+});
+
+test("a direction becomes held only after the configured physical delay", () => {
+  const target = createTarget();
+  const input = createKeyboardInput(target, {
+    directionHoldDelayMs: 120,
+  });
+
+  target.dispatch("keydown", { code: "ArrowRight", timeStamp: 1000 });
+  assert.equal(input.heldAction(1119), null);
+  assert.equal(input.heldAction(1120), "right");
 
   target.dispatch("keyup", { code: "ArrowRight" });
   assert.equal(input.heldAction(), null);

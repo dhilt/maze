@@ -11,8 +11,8 @@ const DIRS = {
 // The adapter turns a DESIRED action into the CONCRETE action to execute, judged
 // against the live world/player state right before it runs. It may:
 //   * pass through   — "attack" → an attack;
-//   * transform      — a move into a wall → a one-unit turn/bump, or an attack
-//                      facing a stored wall → a wallAttack;
+//   * transform      — a new direction → a one-unit turn, or an attack facing
+//                      a stored wall → a wallAttack;
 //   * cancel         — return null, and the scheduler drops it from the queue.
 // Every concrete action carries an integer timeCost in logical game-time units.
 export function createActionAdapter({
@@ -96,6 +96,18 @@ export function createActionAdapter({
     }
 
     const [dx0, dy0] = DIRS[desired];
+    // A direction change is always its own action, even on a clear path. A
+    // second press or a confirmed hold resolves after facing has changed.
+    if (player.facing !== desired) {
+      return {
+        kind: "turn",
+        dx: 0,
+        dy: 0,
+        timeCost: character.actionCosts.turn,
+        facing: desired,
+      };
+    }
+
     let dx = dx0;
     let dy = dy0;
     if (player.col + dx < 0 || player.col + dx >= world.width) dx = 0;
@@ -105,12 +117,8 @@ export function createActionAdapter({
     const blocker = (dx !== 0 || dy !== 0)
       ? findEntryBlocker(player.col, player.row, player.col + dx, player.row + dy)
       : null;
-    if (blocker !== null && player.facing === desired) {
-      return attackCell(player.col + dx, player.row + dy);
-    }
     if (blocker !== null) {
-      dx = 0;
-      dy = 0;
+      return attackCell(player.col + dx, player.row + dy);
     }
 
     if (dx !== 0 || dy !== 0) {
@@ -124,15 +132,7 @@ export function createActionAdapter({
     }
     // Looking into the same obstruction changes no actor state. Drop that intent
     // without occupying the action bus; continuous world time still advances.
-    if (player.facing === desired) return null;
-    // Transformed: a blocked move becomes a short in-place turn/bump.
-    return {
-      kind: "turn",
-      dx: 0,
-      dy: 0,
-      timeCost: character.actionCosts.turn,
-      facing: desired,
-    };
+    return null;
   }
 
   return { adapt };

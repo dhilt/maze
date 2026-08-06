@@ -140,9 +140,9 @@ export function createLevelSession({
     player,
     monsters,
     reachedExit,
-    update({ dt, time }) {
+    update({ dt, time, realTimestamp }) {
       frameStartedAt = time - dt;
-      scheduler.update(dt);
+      scheduler.update(dt, realTimestamp);
       enemies.update(dt);
       combat.resolve();
       exitController.advance(time);

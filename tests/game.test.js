@@ -390,6 +390,7 @@ test("a living hero still finishes when landing on the exit", () => {
       health: 20,
       exitX: 3,
     });
+    state.player.facing = "right";
 
     environment.target.dispatchEvent(keyEvent("keydown", "ArrowRight"));
     game.start();
@@ -398,6 +399,29 @@ test("a living hero still finishes when landing on the exit", () => {
     assert.equal(state.character.stats.health, 20);
     assert.equal(state.player.col, 3);
     assert.deepEqual(outcomes, ["escaped"]);
+  });
+});
+
+test("a direction tap turns in place while holding continues into movement", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 10,
+      health: 20,
+      exitX: 0,
+    });
+
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowRight"));
+    game.start();
+    environment.runFrame(100);
+
+    assert.equal(state.player.facing, "right");
+    assert.equal(state.player.col, 2, "the initial press only turns before hold is confirmed");
+
+    environment.runFrame(200);
+    assert.ok(state.player.col > 2, "the held direction starts movement after its delay");
+
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowRight"));
+    game.stop();
   });
 });
 

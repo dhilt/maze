@@ -10,6 +10,7 @@ test("first tick has zero delta and starts time at zero", () => {
   const first = clock.tick(1000);
   assert.equal(first.dt, 0);
   assert.equal(first.time, 0);
+  assert.equal(first.timestamp, 1000);
 });
 
 test("delta is elapsed seconds and time accumulates", () => {

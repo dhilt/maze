@@ -80,6 +80,27 @@ test("a one-unit turn consumes time then carries leftover into the next action",
   assert.equal(attack.log.length, 1);
 });
 
+test("two equal direction presses buffer a turn followed by a step", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  let resolutions = 0;
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter((id) => {
+      resolutions += 1;
+      return resolutions === 1 ? turnOf(id) : stepOf(id);
+    }),
+    movement,
+    attack: makeExecutor(),
+    input,
+  });
+
+  input.queue("right", "right");
+  scheduler.update(1);
+
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["turn", "step"]);
+  assert.equal(scheduler.activeId, "right");
+});
+
 test("the adapter can cancel a declared action (dropped from the queue)", () => {
   const movement = makeExecutor();
   const attack = makeExecutor();

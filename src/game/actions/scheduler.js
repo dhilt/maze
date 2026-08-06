@@ -3,12 +3,12 @@
 // the live world into a concrete action — possibly transformed (blocked move →
 // short turn) or cancelled (dropped from the queue).
 //
-// Queue rules: run in order pressed; cap 2 (overflow dropped); no two consecutive
-// equal directions. An explicit interaction replaces the buffered action when
-// necessary, but never interrupts the action already in progress. A discrete
-// attack may buffer another attack so repeated strikes do not require
-// frame-perfect input. When idle & empty, a held direction or attack refills it
-// (auto-repeat).
+// Queue rules: run in order pressed; cap 2 (overflow dropped). Directions may
+// repeat so a fast double press can mean turn + step. An explicit interaction
+// replaces the buffered action when necessary, but never interrupts the action
+// already in progress. A discrete attack may buffer another attack so repeated
+// strikes do not require frame-perfect input. When idle & empty, a confirmed
+// held direction or attack refills it (auto-repeat).
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
 export function createActionScheduler({
@@ -40,7 +40,7 @@ export function createActionScheduler({
       return;
     }
     const last = queue.length ? queue[queue.length - 1] : null;
-    if (id === last && id !== "attack") return;
+    if (id === "consume" && last === "consume") return;
     queue.push(id);
   }
 
@@ -64,7 +64,7 @@ export function createActionScheduler({
     return true;
   }
 
-  function update(deltaUnits) {
+  function update(deltaUnits, realTimestamp) {
     for (const id of input.drainPressed()) enqueue(id);
 
     let budget = deltaUnits;
@@ -75,7 +75,7 @@ export function createActionScheduler({
       if (!running) {
         if (queue.length === 0) {
           if (heldTried) break; // already resolved the held action this frame
-          const held = input.heldAction();
+          const held = input.heldAction(realTimestamp);
           if (held === null) break;
           enqueue(held);
           heldTried = true;

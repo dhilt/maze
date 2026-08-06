@@ -26,9 +26,19 @@ function makeAdapter(
   });
 }
 
-test("a clear direction resolves to a step", () => {
+test("a clear direction change resolves to a turn", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   const adapter = makeAdapter(world, { col: 2, row: 2, facing: "down" });
+  const a = adapter.adapt("right");
+  assert.equal(a.kind, "turn");
+  assert.deepEqual([a.dx, a.dy], [0, 0]);
+  assert.equal(a.timeCost, 1);
+  assert.equal(a.facing, "right");
+});
+
+test("a clear direction matching facing resolves to a step", () => {
+  const world = generateWorld({ width: 5, height: 5, seed: 1 });
+  const adapter = makeAdapter(world, { col: 2, row: 2, facing: "right" });
   const a = adapter.adapt("right");
   assert.equal(a.kind, "step");
   assert.deepEqual([a.dx, a.dy], [1, 0]);
@@ -41,7 +51,7 @@ test("actions capture the character's current cost when they resolve", () => {
   const character = createCharacter({ actionCosts: { step: 3 } });
   const adapter = makeAdapter(
     world,
-    { col: 2, row: 2, facing: "down" },
+    { col: 2, row: 2, facing: "right" },
     undefined,
     character,
   );
@@ -54,7 +64,7 @@ test("actions capture the character's current cost when they resolve", () => {
   assert.equal(second.timeCost, 7);
 });
 
-test("a wall transforms a move into a one-unit turn", () => {
+test("a direction change resolves to a turn even when a wall blocks the route", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   world.at(2, 2).wallRight = createWall({ health: 20, defense: 2, impactWear: 1 });
   const adapter = makeAdapter(world, { col: 2, row: 2, facing: "down" });

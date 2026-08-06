@@ -9,13 +9,26 @@ const KEY_MAP = Object.freeze({
   KeyD: "right",
 });
 
+const DIRECTION_HOLD_DELAY_MS = 120;
+
 // Low-level input: exposes the held action (for auto-repeat while a key is
 // down) and the stream of discrete presses (for the action buffer). It carries
 // no notion of the current action — the scheduler applies the buffering rules.
-export function createKeyboardInput(target = window) {
+export function createKeyboardInput(
+  target = window,
+  { directionHoldDelayMs = DIRECTION_HOLD_DELAY_MS } = {},
+) {
+  if (!Number.isFinite(directionHoldDelayMs) || directionHoldDelayMs < 0) {
+    throw new RangeError("Direction hold delay must be a non-negative number");
+  }
   const keys = Object.create(null);
+  const pressedAt = Object.create(null);
   let lastAxis = "h";
   const pressed = []; // discrete action ids since the last drain
+
+  function eventTime(event) {
+    return Number.isFinite(event.timeStamp) ? Math.max(event.timeStamp, 0) : 0;
+  }
 
   function onKeyDown(event) {
     if (event.code === "KeyE") {
@@ -31,9 +44,14 @@ export function createKeyboardInput(target = window) {
     }
     const action = KEY_MAP[event.code];
     if (!action) return;
+    if (event.repeat || keys[action]) {
+      event.preventDefault();
+      return;
+    }
     keys[action] = true;
+    pressedAt[action] = eventTime(event);
     lastAxis = action === "left" || action === "right" ? "h" : "v";
-    if (!event.repeat) pressed.push(action);
+    pressed.push(action);
     event.preventDefault();
   }
 
@@ -46,11 +64,15 @@ export function createKeyboardInput(target = window) {
     const action = KEY_MAP[event.code];
     if (!action) return;
     keys[action] = false;
+    delete pressedAt[action];
     event.preventDefault();
   }
 
   function clear() {
-    for (const action of Object.values(KEY_MAP)) keys[action] = false;
+    for (const action of Object.values(KEY_MAP)) {
+      keys[action] = false;
+      delete pressedAt[action];
+    }
     keys.attack = false;
     pressed.length = 0;
   }
@@ -69,8 +91,12 @@ export function createKeyboardInput(target = window) {
   }
 
   // Attack takes priority while Space and a direction are held together.
-  function heldAction() {
-    return keys.attack ? "attack" : heldDirection();
+  function heldAction(at = 0) {
+    if (keys.attack) return "attack";
+    const direction = heldDirection();
+    if (direction === null) return null;
+    const heldFor = at - (pressedAt[direction] ?? at);
+    return heldFor >= directionHoldDelayMs ? direction : null;
   }
 
   // Take the discrete presses recorded since the previous call.

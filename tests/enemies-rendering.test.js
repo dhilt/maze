@@ -177,7 +177,7 @@ test("debug mode shows monster stats below an always-visible health bar", () => 
       facing: "down",
       move: null,
       attack: null,
-      stats: { health: 5, attack: 6, defense: 7 },
+      stats: { health: 5.126000000000001, attack: 6, defense: 7 },
       statsMax: { health: 10, attack: 6, defense: 7 },
     }],
     cam: { px: 0, py: 0 },

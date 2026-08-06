@@ -1,25 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCharacter } from "../src/entities/character.js";
 import { createActionAdapter } from "../src/game/actions/adapter.js";
 import { createWall } from "../src/world/maze.js";
 import { generateWorld } from "../src/world/world.js";
+import { createCharacterFixture } from "./fixtures/character.js";
 
 const COSTS = { step: 5, turn: 1, attack: 5, consume: 10 };
 
 function makeAdapter(
   world,
   player,
-  findEntryBlocker,
+  findEntryBlocker = () => null,
   character,
-  findEntityById,
+  findEntityById = () => null,
   onActionRejected,
 ) {
   return createActionAdapter({
     world,
     player,
-    character: character ?? createCharacter({ actionCosts: COSTS }),
+    character: character ?? createCharacterFixture({ actionCosts: COSTS }),
     findEntryBlocker,
     findEntityById,
     onActionRejected,
@@ -48,7 +48,7 @@ test("a clear direction matching facing resolves to a step", () => {
 
 test("actions capture the character's current cost when they resolve", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
-  const character = createCharacter({ actionCosts: { step: 3 } });
+  const character = createCharacterFixture({ actionCosts: { step: 3 } });
   const adapter = makeAdapter(
     world,
     { col: 2, row: 2, facing: "right" },
@@ -165,7 +165,7 @@ test("attack facing the world perimeter resolves against an indestructible wall"
 test("consume resolves only for an injured hero with enough morale standing on a corpse", () => {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
   const player = { col: 0, row: 0, facing: "down" };
-  const character = createCharacter({
+  const character = createCharacterFixture({
     stats: { health: 15, morale: 3 },
     actionCosts: COSTS,
   });
@@ -208,7 +208,7 @@ test("consume resolves only for an injured hero with enough morale standing on a
 test("consume selects an affordable carcass when several corpses share a cell", () => {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
   const player = { col: 0, row: 0, facing: "down" };
-  const character = createCharacter({
+  const character = createCharacterFixture({
     stats: { health: 15, morale: 3 },
     actionCosts: COSTS,
   });

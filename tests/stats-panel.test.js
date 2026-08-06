@@ -48,6 +48,15 @@ test("keeps empty stat tracks visible when health reaches zero", () => {
   assert.match(root.innerHTML, /width:0%;background:rgb\(172, 102, 102\)/);
 });
 
+test("rounds fractional stat values for debug display", () => {
+  const root = createRoot();
+  const panel = createStatsPanel(root);
+
+  panel.update(createPanelCharacter({ health: 4.126000000000001, healthMax: 13 }));
+
+  assert.match(root.innerHTML, />4 \/ 13</);
+});
+
 test("updates Health and Attack remainders independently", () => {
   const fills = {
     health: { style: {} },

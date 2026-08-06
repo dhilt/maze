@@ -4,10 +4,10 @@ import test from "node:test";
 import { createAssetBundle } from "../src/assets/asset-pack.js";
 import { KNIGHT_ASSET_PACK } from "../src/assets/packs/knight.js";
 import { MEAT_MONSTER_ASSET_PACK } from "../src/assets/packs/meat-monster.js";
-import { createCharacter } from "../src/entities/character.js";
 import { createGame } from "../src/game/game.js";
 import { EXIT_PHASES } from "../src/world/exit.js";
 import { createWall } from "../src/world/maze.js";
+import { createCharacterFixture } from "./fixtures/character.js";
 
 const TEST_CONFIG = Object.freeze({
   cellSize: 16,
@@ -150,7 +150,7 @@ function createTestGame({
     height: worldRows,
     monsterCount,
   }];
-  const character = createCharacter({
+  const character = createCharacterFixture({
     name: "Integration Hero",
     stats: { health, attack: 7, defense: 5, morale: 8 },
     statsMax: { health: 20, attack: 7, defense: 5, morale: 10 },
@@ -180,6 +180,8 @@ function createTestGame({
 
   const state = game.getState();
   for (const monster of state.monsters) {
+    monster.attackEfficiency = 1;
+    monster.defenseEfficiency = 1;
     Object.assign(monster.actionCosts, {
       step: TEST_ACTION_COSTS.step,
       turn: TEST_ACTION_COSTS.turn,

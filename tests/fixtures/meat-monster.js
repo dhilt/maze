@@ -1,0 +1,45 @@
+export function createMeatMonsterFixture({
+  id = "monster-1",
+  col = 0,
+  row = 0,
+  facing = "down",
+  stats = {},
+  statsMax = {},
+  actionCosts = {},
+  attackEfficiency = 1,
+  defenseEfficiency = 1,
+  carcass = {},
+  moraleReward = 1,
+  impactWear = 0.05,
+  move = null,
+  attack = null,
+} = {}) {
+  const concreteStats = {
+    health: 20,
+    attack: 7,
+    defense: 5,
+    ...stats,
+  };
+  return {
+    id,
+    kind: "meat-monster",
+    col,
+    row,
+    facing,
+    stats: concreteStats,
+    statsMax: { ...concreteStats, ...statsMax },
+    actionCosts: {
+      step: 16,
+      turn: 1,
+      attack: 10,
+      ...actionCosts,
+    },
+    attackEfficiency,
+    defenseEfficiency,
+    carcass: { nutrition: 5, moraleCost: 2, ...carcass },
+    moraleReward,
+    impactWear,
+    move,
+    attack,
+  };
+}

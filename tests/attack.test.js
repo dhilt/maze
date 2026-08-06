@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCharacter } from "../src/entities/character.js";
-import { createAttack } from "../src/game/actions/attack.js";
 import { createStatWear } from "../src/game/stat-wear.js";
 import { createWall } from "../src/world/maze.js";
 import { generateWorld } from "../src/world/world.js";
+import { createAttackFixture } from "./fixtures/attack.js";
+import { createCharacterFixture } from "./fixtures/character.js";
 
 test("attack runs for its time cost then clears", () => {
-  const attack = createAttack();
+  const attack = createAttackFixture();
   attack.begin({ timeCost: 5 });
   assert.equal(attack.active, true);
 
@@ -23,7 +23,7 @@ test("attack runs for its time cost then clears", () => {
 
 test("an attacked cell is checked at the shared attack peak", () => {
   const impacts = [];
-  const attack = createAttack({
+  const attack = createAttackFixture({
     onImpact: (impact) => {
       impacts.push({ ...impact, strike: undefined });
       impact.strike.hitResolved = true;
@@ -48,7 +48,7 @@ test("an attacked cell is checked at the shared attack peak", () => {
 
 test("an empty strike remains active briefly after its peak", () => {
   const impacts = [];
-  const attack = createAttack({
+  const attack = createAttackFixture({
     onImpact: (impact) => {
       impacts.push(impact);
       if (impacts.length === 2) impact.strike.hitResolved = true;
@@ -72,9 +72,14 @@ test("an empty strike remains active briefly after its peak", () => {
 test("a wall attack damages at contact and removes the wall at zero", () => {
   const world = generateWorld({ width: 3, height: 3, seed: 1 });
   world.at(1, 1).wallRight = createWall({ health: 10, defense: 2, impactWear: 1 });
-  const character = createCharacter({ stats: { attack: 7 } });
+  const character = createCharacterFixture({ stats: { attack: 7 } });
   const statWear = createStatWear({ character });
-  const attack = createAttack({ world, character, statWear });
+  const attack = createAttackFixture({
+    world,
+    character,
+    statWear,
+    damageRoll: () => 0.5,
+  });
   const resolved = {
     kind: "wallAttack",
     timeCost: 5,
@@ -103,13 +108,14 @@ test("wall impacts carry wear across attack points", () => {
     defense: 2,
     impactWear: 1,
   });
-  const character = createCharacter({ stats: { attack: 7 } });
+  const character = createCharacterFixture({ stats: { attack: 7 } });
   const statWear = createStatWear({ character });
   const changes = [];
-  const attack = createAttack({
+  const attack = createAttackFixture({
     world,
     character,
     statWear,
+    damageRoll: () => 0.5,
     onStatChange: (change) => changes.push(change),
   });
   const resolved = {

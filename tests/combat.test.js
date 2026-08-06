@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCharacter } from "../src/entities/character.js";
-import { createMeatMonster } from "../src/entities/meat-monster.js";
-import { createCombat } from "../src/game/combat.js";
 import { createStatWear } from "../src/game/stat-wear.js";
+import { createCharacterFixture } from "./fixtures/character.js";
+import { createCombatFixture } from "./fixtures/combat.js";
+import { createMeatMonsterFixture } from "./fixtures/meat-monster.js";
+
+const MID_ROLL = () => 0.5;
 
 function monsterAt({
   id = "monster-1",
@@ -13,13 +15,20 @@ function monsterAt({
   defense = 5,
   moraleReward = 3,
   impactWear = 1,
+  attackEfficiency = 1,
+  defenseEfficiency = 1,
 } = {}) {
-  const monster = createMeatMonster({ id, col: 1, row: 0, facing: "left" });
-  Object.assign(monster.stats, { health, attack, defense });
-  Object.assign(monster.statsMax, { health, attack, defense });
-  monster.moraleReward = moraleReward;
-  monster.impactWear = impactWear;
-  return monster;
+  return createMeatMonsterFixture({
+    id,
+    col: 1,
+    row: 0,
+    facing: "left",
+    stats: { health, attack, defense },
+    moraleReward,
+    impactWear,
+    attackEfficiency,
+    defenseEfficiency,
+  });
 }
 
 function duel({
@@ -30,13 +39,18 @@ function duel({
   monsterMoraleReward = 3,
 } = {}) {
   const player = { col: 0, row: 0 };
-  const character = createCharacter({
+  const character = createCharacterFixture({
     stats: { health: heroHealth, attack: 7, defense: 5, morale: heroMorale },
     statsMax: { health: heroHealth, morale: heroMoraleMax },
   });
   const monster = monsterAt({ health: monsterHealth, moraleReward: monsterMoraleReward });
   const monsters = [monster];
-  const combat = createCombat({ player, character, monsters });
+  const combat = createCombatFixture({
+    player,
+    character,
+    monsters,
+    damageRoll: MID_ROLL,
+  });
   return { player, character, monster, monsters, combat };
 }
 
@@ -85,10 +99,11 @@ test("a player kill grants the defeated monster's morale reward", () => {
     monsterMoraleReward: 3,
   });
   const changes = [];
-  const combat = createCombat({
+  const combat = createCombatFixture({
     player,
     character,
     monsters,
+    damageRoll: MID_ROLL,
     onPlayerStatChange: (change) => changes.push(change),
   });
 
@@ -108,10 +123,11 @@ test("kill morale is capped by the hero's maximum and ignores unrelated deaths",
     monsterMoraleReward: 3,
   });
   const changes = [];
-  const combat = createCombat({
+  const combat = createCombatFixture({
     player,
     character,
     monsters,
+    damageRoll: MID_ROLL,
     onPlayerStatChange: (change) => changes.push(change),
   });
 
@@ -143,10 +159,11 @@ test("an earlier lethal hit cancels the defeated attacker's later contact", () =
 test("a preserved dead monster emits its death event only once", () => {
   const { player, character, monster, monsters } = duel({ monsterHealth: 2 });
   const deaths = [];
-  const combat = createCombat({
+  const combat = createCombatFixture({
     player,
     character,
     monsters,
+    damageRoll: MID_ROLL,
     onMonsterDeath: ({ monster: dead, killer, at }) => {
       deaths.push({ id: dead.id, killer, at });
     },
@@ -161,7 +178,7 @@ test("a preserved dead monster emits its death event only once", () => {
 
 test("multiple combat deaths are emitted in their impact-time order", () => {
   const player = { col: 0, row: 0 };
-  const character = createCharacter({
+  const character = createCharacterFixture({
     stats: { attack: 7 },
     statsMax: { attack: 7 },
   });
@@ -170,10 +187,11 @@ test("multiple combat deaths are emitted in their impact-time order", () => {
   late.col = 1;
   early.col = 2;
   const deaths = [];
-  const combat = createCombat({
+  const combat = createCombatFixture({
     player,
     character,
     monsters: [late, early],
+    damageRoll: MID_ROLL,
     onMonsterDeath: ({ monster, at }) => deaths.push([monster.id, at]),
   });
   combat.queueImpact({ ...heroHit(4), targetCell: { col: 1, row: 0 } });
@@ -198,7 +216,12 @@ test("an entity attack misses after its target leaves the attacked cell", () => 
 test("a reserved movement cell defines where a moving target can be hit", () => {
   const { player, character, monster, monsters } = duel();
   monster.move = { kind: "step", dx: 1, dy: 0, elapsed: 1, timeCost: 5 };
-  const combat = createCombat({ player, character, monsters });
+  const combat = createCombatFixture({
+    player,
+    character,
+    monsters,
+    damageRoll: MID_ROLL,
+  });
   combat.queueImpact(heroHit());
 
   const result = combat.resolve();
@@ -240,10 +263,11 @@ test("successful entity hits lightly wear the hero's Attack while misses do not"
   const { player, character, monster, monsters } = duel();
   const statWear = createStatWear({ character });
   const statChanges = [];
-  const combat = createCombat({
+  const combat = createCombatFixture({
     player,
     character,
     monsters,
+    damageRoll: MID_ROLL,
     statWear,
     onPlayerStatChange: (change) => statChanges.push(change),
   });

@@ -17,6 +17,11 @@ const RED = [172, 102, 102];
 const YELLOW = [182, 164, 104];
 const GREEN = [104, 156, 112];
 
+function formatStatValue(value) {
+  if (!Number.isFinite(value)) return String(value);
+  return String(Math.round(value));
+}
+
 function barColor(frac) {
   const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
   const c = frac >= 0.5
@@ -34,7 +39,7 @@ function barRow(label, key, value, max, withRemainder) {
     : "";
   return (
     `<div class="stats-row">` +
-      `<div class="stats-head"><span data-stat-label="${key}">${label}</span><span class="stats-value">${value} / ${max}</span></div>` +
+      `<div class="stats-head"><span data-stat-label="${key}">${label}</span><span class="stats-value">${formatStatValue(value)} / ${formatStatValue(max)}</span></div>` +
       bar +
       remainder +
     `</div>`
@@ -44,7 +49,7 @@ function barRow(label, key, value, max, withRemainder) {
 function valueRow(label, value) {
   return (
     `<div class="stats-row">` +
-      `<div class="stats-head"><span>${label}</span><span class="stats-value">${value}</span></div>` +
+      `<div class="stats-head"><span>${label}</span><span class="stats-value">${formatStatValue(value)}</span></div>` +
     `</div>`
   );
 }

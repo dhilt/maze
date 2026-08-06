@@ -16,16 +16,14 @@ const SWORD_IMPACT = Object.freeze({
 export function createAttack({
   world,
   character,
+  damageRoll,
   statWear,
   onStatChange,
   onImpact,
-} = {}) {
+}) {
   let state = null;
 
   function begin(resolved) {
-    if (resolved.kind === "wallAttack" && (!world || !character || !statWear)) {
-      throw new Error("wallAttack requires a world, character and statWear");
-    }
     state = { ...resolved, elapsed: 0 };
     if (resolved.kind === "wallAttack") state.contactResolved = false;
     if (resolved.kind === "attack") state.hitResolved = false;
@@ -37,8 +35,11 @@ export function createAttack({
     if (wall !== null) {
       const impact = resolveImpact({
         power: character.stats[SWORD_IMPACT.powerStat],
+        powerEfficiency: character.attackEfficiency,
         defense: wall.stats.defense,
+        defenseEfficiency: 1,
         impactWear: wall.impactWear,
+        roll: damageRoll(),
         wearMultiplier: SWORD_IMPACT.wearMultiplier,
       });
       damageWall(world, x, y, dx, dy, impact.damage);
@@ -63,7 +64,7 @@ export function createAttack({
       const activeEnd = state.timeCost * ATTACK_ACTIVE_END_PROGRESS;
       if (state.elapsed >= contactElapsed && previousElapsed < activeEnd) {
         const evaluationElapsed = Math.max(previousElapsed, contactElapsed);
-        onImpact?.({
+        onImpact({
           at: startOffset + evaluationElapsed - previousElapsed,
           attacker: { type: "player" },
           targetCell: state.targetCell,

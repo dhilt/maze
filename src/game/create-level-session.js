@@ -1,6 +1,7 @@
 import { placeCorpse } from "../world/corpse.js";
 import { isExitOpen, placeExit } from "../world/exit.js";
 import { generateMaze } from "../world/maze.js";
+import { createRandom } from "../world/random.js";
 import { generateWorld } from "../world/world.js";
 import { createActionAdapter } from "./actions/adapter.js";
 import { createAttack } from "./actions/attack.js";
@@ -11,6 +12,7 @@ import { createCamera } from "./camera.js";
 import { createCombat } from "./combat.js";
 import { createEnemySystem, spawnMeatMonsters } from "./enemies/enemy-system.js";
 import { createExitController } from "./exit-controller.js";
+import { createBoundedNormalRoll } from "./random-roll.js";
 
 function levelSeed(seed, levelNumber, salt) {
   return (seed ^ Math.imul(levelNumber, salt)) >>> 0;
@@ -54,6 +56,10 @@ export function createLevelSession({
 
   const movement = createMovement({ player, cellSize: config.cellSize });
   const enemySeed = (concreteMazeSeed ^ 0x6d2b79f5) >>> 0;
+  const damageSeed = (concreteMazeSeed ^ 0xc2b2ae35) >>> 0;
+  const damageRoll = createBoundedNormalRoll({
+    random: createRandom(damageSeed)
+  });
   const monsters = spawnMeatMonsters({
     world,
     player,
@@ -71,6 +77,7 @@ export function createLevelSession({
     character,
     monsters,
     getPlayerMove: () => movement.move,
+    damageRoll,
     statWear,
     onPlayerDamage: onStatsDirty,
     onPlayerStatChange: onStatsDirty,
@@ -93,6 +100,7 @@ export function createLevelSession({
   const attack = createAttack({
     world,
     character,
+    damageRoll,
     statWear,
     onStatChange: onStatsDirty,
     onImpact: combat.queueImpact,

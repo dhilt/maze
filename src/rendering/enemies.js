@@ -44,12 +44,15 @@ function drawHealthBar(ctx, monster, cellSize) {
 
 function drawDebugStats(ctx, monster, cellSize) {
   const { health, attack, defense } = monster.stats;
+  const values = [health, attack, defense]
+    .map(Math.round)
+    .join(" ");
   ctx.fillStyle = DEBUG_STATS_COLOR;
   ctx.font = `600 ${Math.max(6, Math.round(cellSize * 0.11))}px ui-monospace, monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText(
-    `${health} ${attack} ${defense}`,
+    values,
     0,
     -cellSize / 2 + 13,
   );

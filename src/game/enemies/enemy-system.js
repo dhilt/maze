@@ -1,7 +1,4 @@
-import {
-  createMeatMonster,
-  MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
-} from "../../entities/meat-monster.js";
+import { createMeatMonster } from "../../entities/meat-monster.js";
 import { hasWall } from "../../world/maze.js";
 import { createRandom } from "../../world/random.js";
 import {
@@ -15,6 +12,7 @@ const DIRECTIONS = Object.freeze([
   Object.freeze({ id: "left", dx: -1, dy: 0 }),
   Object.freeze({ id: "right", dx: 1, dy: 0 }),
 ]);
+const DIRECTION_CHANGE_CHANCE = 0.2;
 
 export function spawnMeatMonsters({
   world,
@@ -70,10 +68,10 @@ export function spawnMeatMonsters({
 export function createEnemySystem({
   world,
   player,
-  getPlayerMove = () => null,
+  getPlayerMove,
   monsters,
   seed,
-  directionChangeChance = MEAT_MONSTER_DIRECTION_CHANGE_CHANCE,
+  directionChangeChance = DIRECTION_CHANGE_CHANCE,
   onImpact,
 }) {
   if (
@@ -214,7 +212,7 @@ export function createEnemySystem({
         const previousElapsed = action.elapsed - consumed;
         if (action.elapsed >= contactElapsed && previousElapsed < activeEnd) {
           const evaluationElapsed = Math.max(previousElapsed, contactElapsed);
-          onImpact?.({
+          onImpact({
             at: actionStart + evaluationElapsed - previousElapsed,
             attacker: { type: "entity", id: monster.id },
             targetCell: action.targetCell,

@@ -1,42 +1,27 @@
-import { createActionCosts } from "../game/actions/action-costs.js";
-
-const DEFAULT_STATS = Object.freeze({
-  health: 30,
-  attack: 7,
-  defense: 5,
-  morale: 8,
-});
-
-const DEFAULT_STATS_MAX = Object.freeze({
-  health: 30,
-  attack: 7,
-  defense: 5,
-  morale: 10,
-});
-
-const DEFAULT_ACTION_COSTS = Object.freeze({
-  step: 10,
-  turn: 1,
-  attack: 9,
-  consume: 20,
-});
-
-export function createCharacter(overrides = {}) {
-  const {
-    stats = {},
-    statsMax = {},
-    actionCosts = {},
-    ...characterOverrides
-  } = overrides;
-
+export function createCharacter({ name }) {
   return {
-    name: "Hero",
-    stats: { ...DEFAULT_STATS, ...stats },
-    statsMax: { ...DEFAULT_STATS_MAX, ...statsMax },
-    actionCosts: createActionCosts(DEFAULT_ACTION_COSTS, actionCosts),
-    // Game-time units per -1 health tick. 0 or negative disables the drain.
+    name,
+    stats: {
+      health: 30,
+      attack: 7,
+      defense: 5,
+      morale: 8,
+    },
+    statsMax: {
+      health: 30,
+      attack: 7,
+      defense: 5,
+      morale: 10,
+    },
     healthDrainSpeed: 400,
-    ...characterOverrides,
+    actionCosts: {
+      step: 10,
+      turn: 1,
+      attack: 9,
+      consume: 20,
+    },
+    attackEfficiency: 0.6,
+    defenseEfficiency: 0.6,
   };
 }
 

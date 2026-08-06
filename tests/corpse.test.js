@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createMeatMonster } from "../src/entities/meat-monster.js";
 import { placeCorpse } from "../src/world/corpse.js";
 import { generateWorld } from "../src/world/world.js";
+import { createMeatMonsterFixture } from "./fixtures/meat-monster.js";
 
 test("a dead moving monster leaves a serialisable corpse in its occupied cell", () => {
   const world = generateWorld({ width: 3, height: 1, seed: 1 });
-  const monster = createMeatMonster({ id: "m1", col: 2, row: 0, facing: "left" });
+  const monster = createMeatMonsterFixture({
+    id: "m1",
+    col: 2,
+    row: 0,
+    facing: "left",
+  });
   monster.move = { kind: "step", dx: -1, dy: 0, elapsed: 2, timeCost: 8 };
 
   const corpse = placeCorpse(world, monster);

@@ -11,27 +11,71 @@ function nonNegative(value, name, { allowInfinity = false } = {}) {
   return value;
 }
 
-// Finite protection can always be worn down by a real hit; Infinity is the
-// explicit contract for targets that cannot be damaged at all.
-export function resolveDamage({ power, defense }) {
+function efficiency(value, name) {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(`${name} must be a number in [0, 1]`);
+  }
+  return value;
+}
+
+function normalizedRoll(value) {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error("Damage roll must be a number in [0, 1]");
+  }
+  return value;
+}
+
+// Efficiencies define the reliable fraction of each nominal stat. The attack
+// floor and defense ceiling form the left edge; their opposites form the right.
+export function resolveDamageRange({
+  power,
+  powerEfficiency,
+  defense,
+  defenseEfficiency,
+}) {
   nonNegative(power, "power");
   nonNegative(defense, "defense", { allowInfinity: true });
+  efficiency(powerEfficiency, "powerEfficiency");
+  efficiency(defenseEfficiency, "defenseEfficiency");
 
-  if (power === 0 || defense === Infinity) return 0;
-  return Math.min(power, Math.max(1, power - defense));
+  if (power === 0 || defense === Infinity) return { min: 0, max: 0 };
+  return {
+    min: power * powerEfficiency - defense,
+    max: power - defense * defenseEfficiency,
+  };
+}
+
+function resolveDamageOutcome(options) {
+  const { min, max } = resolveDamageRange(options);
+  const roll = normalizedRoll(options.roll);
+  const rawDamage = min + roll * (max - min);
+  return { rawDamage, damage: Math.max(0, rawDamage) };
+}
+
+export function resolveDamage(options) {
+  return resolveDamageOutcome(options).damage;
 }
 
 // Resolves one physical impact without mutating either participant.
 export function resolveImpact({
   power,
+  powerEfficiency,
   defense,
+  defenseEfficiency,
   impactWear,
+  roll,
   wearMultiplier = 1,
 }) {
   nonNegative(impactWear, "impactWear");
   nonNegative(wearMultiplier, "wearMultiplier");
 
-  const damage = resolveDamage({ power, defense });
+  const { rawDamage, damage } = resolveDamageOutcome({
+    power,
+    powerEfficiency,
+    defense,
+    defenseEfficiency,
+    roll,
+  });
   const blockedDamage = Math.min(power, defense);
   const statWear = Math.ceil(
     impactWear * wearMultiplier * (
@@ -41,5 +85,5 @@ export function resolveImpact({
     ),
   );
 
-  return { rawDamage: power, blockedDamage, damage, statWear };
+  return { rawDamage, blockedDamage, damage, statWear };
 }

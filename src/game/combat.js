@@ -12,7 +12,8 @@ export function createCombat({
   player,
   character,
   monsters,
-  getPlayerMove = () => null,
+  getPlayerMove,
+  damageRoll,
   statWear,
   onPlayerDamage,
   onPlayerStatChange,
@@ -91,13 +92,19 @@ export function createCombat({
       const impact = attacker.ref.type === "player"
         ? resolveImpact({
             power: attacker.stats.attack,
+            powerEfficiency: attacker.key.attackEfficiency,
             defense: target.stats.defense,
+            defenseEfficiency: target.key.defenseEfficiency,
             impactWear: target.key.impactWear ?? 0,
+            roll: damageRoll(),
           })
         : {
             damage: resolveDamage({
               power: attacker.stats.attack,
+              powerEfficiency: attacker.key.attackEfficiency,
               defense: target.stats.defense,
+              defenseEfficiency: target.key.defenseEfficiency,
+              roll: damageRoll(),
             }),
             statWear: 0,
           };
@@ -112,7 +119,7 @@ export function createCombat({
     const totals = new Map();
     for (const hit of pending) {
       if (hit.event.strike) hit.event.strike.hitResolved = true;
-      if (hit.attackWear > 0 && statWear) {
+      if (hit.attackWear > 0) {
         const wear = statWear.apply("attack", hit.attackWear);
         if (wear.lost > 0) onPlayerStatChange?.(wear);
       }

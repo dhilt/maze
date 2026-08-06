@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCharacter } from "../src/entities/character.js";
 import { createConsume } from "../src/game/actions/consume.js";
 import { generateWorld } from "../src/world/world.js";
+import { createCharacterFixture } from "./fixtures/character.js";
 
 function setup({
   health = 15,
@@ -13,7 +13,7 @@ function setup({
   entityExists = true,
 } = {}) {
   const world = generateWorld({ width: 1, height: 1, seed: 1 });
-  const character = createCharacter({
+  const character = createCharacterFixture({
     stats: { health, morale },
     statsMax: { health: 20, morale: 10 },
   });

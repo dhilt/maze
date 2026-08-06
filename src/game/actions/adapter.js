@@ -19,13 +19,10 @@ export function createActionAdapter({
   world,
   player,
   character,
-  findEntryBlocker = () => null,
-  findEntityById = () => null,
+  findEntryBlocker,
+  findEntityById,
   onActionRejected,
 }) {
-  if (!character?.actionCosts) {
-    throw new Error("Action adapter requires character action costs");
-  }
   function attackCell(col, row) {
     return {
       kind: "attack",

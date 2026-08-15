@@ -20,8 +20,8 @@ export function createCharacter({ name }) {
       attack: 9,
       consume: 20,
     },
-    attackEfficiency: 0.6,
-    defenseEfficiency: 0.6,
+    attackEfficiency: 0.5,
+    defenseEfficiency: 0.5,
   };
 }
 

@@ -22,8 +22,8 @@ export function createMeatMonster({ id, col, row, facing, random }) {
       turn: 1,
       attack: 10,
     },
-    attackEfficiency: 0.5,
-    defenseEfficiency: 0.5,
+    attackEfficiency: 0.33,
+    defenseEfficiency: 0.33,
     carcass: {
       nutrition: randomInteger(random, 4, 7),
       moraleCost: 2,

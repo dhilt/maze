@@ -3,6 +3,7 @@ const WEAR_RULES = Object.freeze({
   blocked: 2,
   penetrating: 0.5,
 });
+const MINIMUM_DAMAGE = 0.05;
 
 function nonNegative(value, name, { allowInfinity = false } = {}) {
   if (value < 0 || (!Number.isFinite(value) && !(allowInfinity && value === Infinity))) {
@@ -49,7 +50,7 @@ function resolveDamageOutcome(options) {
   const { min, max } = resolveDamageRange(options);
   const roll = normalizedRoll(options.roll);
   const rawDamage = min + roll * (max - min);
-  return { rawDamage, damage: Math.max(0, rawDamage) };
+  return { rawDamage, damage: Math.max(MINIMUM_DAMAGE, rawDamage) };
 }
 
 export function resolveDamage(options) {

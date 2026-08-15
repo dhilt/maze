@@ -26,7 +26,7 @@ test("efficiencies define the raw damage interval", () => {
   closeTo(range.max, 4);
 });
 
-test("damage samples the raw interval and clamps only the sampled result", () => {
+test("damage samples the raw interval and applies the global hard minimum", () => {
   const options = {
     power: 6,
     powerEfficiency: 0.7,
@@ -34,26 +34,26 @@ test("damage samples the raw interval and clamps only the sampled result", () =>
     defenseEfficiency: 0.9,
   };
 
-  assert.equal(resolveDamage({ ...options, roll: 0 }), 0);
+  assert.equal(resolveDamage({ ...options, roll: 0 }), 0.05);
   closeTo(resolveDamage({ ...options, roll: 0.5 }), 0.35);
   closeTo(resolveDamage({ ...options, roll: 1 }), 1.5);
 });
 
-test("zero power and infinite defense always produce zero damage", () => {
+test("the global minimum also applies to zero power and infinite defense", () => {
   assert.equal(resolveDamage({
     power: 0,
     powerEfficiency: 0.5,
     defense: 0,
     defenseEfficiency: 0.5,
     roll: 1,
-  }), 0);
+  }), 0.05);
   assert.equal(resolveDamage({
     power: 100,
     powerEfficiency: 0.5,
     defense: Infinity,
     defenseEfficiency: 0.5,
     roll: 1,
-  }), 0);
+  }), 0.05);
 });
 
 test("impact exposes sampled raw damage and separates blocked damage", () => {
@@ -83,8 +83,8 @@ test("a fully blocked impact still causes finite stat wear", () => {
   }), {
     rawDamage: 0,
     blockedDamage: 6,
-    damage: 0,
-    statWear: 16,
+    damage: 0.05,
+    statWear: 17,
   });
 });
 

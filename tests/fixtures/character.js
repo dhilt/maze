@@ -26,9 +26,9 @@ export function createCharacterFixture({
     healthDrainSpeed,
     actionCosts: {
       step: 5,
-      turn: 1,
+      face: 1,
       attack: 5,
-      consume: 10,
+      eat: 10,
       ...actionCosts,
     },
     attackEfficiency,

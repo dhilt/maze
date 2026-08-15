@@ -1,3 +1,5 @@
+import { ACTION } from "./actions/intent.js";
+
 const KEY_MAP = Object.freeze({
   ArrowUp: "up",
   KeyW: "up",
@@ -32,13 +34,13 @@ export function createKeyboardInput(
 
   function onKeyDown(event) {
     if (event.code === "KeyE") {
-      if (!event.repeat) pressed.push("consume");
+      if (!event.repeat) pressed.push(ACTION.eat);
       event.preventDefault();
       return;
     }
     if (event.code === "Space") {
       keys.attack = true;
-      if (!event.repeat) pressed.push("attack");
+      if (!event.repeat) pressed.push(ACTION.attack);
       event.preventDefault();
       return;
     }
@@ -92,7 +94,7 @@ export function createKeyboardInput(
 
   // Attack takes priority while Space and a direction are held together.
   function heldAction(at = 0) {
-    if (keys.attack) return "attack";
+    if (keys.attack) return ACTION.attack;
     const direction = heldDirection();
     if (direction === null) return null;
     const heldFor = at - (pressedAt[direction] ?? at);

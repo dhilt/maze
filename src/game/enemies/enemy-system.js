@@ -1,5 +1,5 @@
 import { createMeatMonster } from "../../entities/meat-monster.js";
-import { DIR_IDS, actorBlocksEntry, resolveIntent } from "../actions/intent.js";
+import { ACTION, DIR_IDS, actorBlocksEntry, resolveIntent } from "../actions/intent.js";
 import { advanceAction, attackContactElapsed } from "../actions/runner.js";
 import { createRandom } from "../../world/random.js";
 
@@ -103,9 +103,9 @@ export function createEnemySystem({
       world,
       towardBlocked: false,
       cell(toCol, toRow) {
-        if (playerBlocksEntry(monster.col, monster.row, toCol, toRow)) return "attack";
+        if (playerBlocksEntry(monster.col, monster.row, toCol, toRow)) return "hostile";
         if (findBlockingMonster(monster.col, monster.row, toCol, toRow, monster)) {
-          return "block";
+          return "blocked";
         }
         return null;
       },
@@ -114,7 +114,7 @@ export function createEnemySystem({
 
   function beginAction(monster) {
     const frontAction = adaptIntent(monster, monster.facing);
-    if (frontAction?.kind === "attack") {
+    if (frontAction?.kind === ACTION.attack) {
       monster.attack = { ...frontAction, elapsed: 0, hitResolved: false };
       return true;
     }
@@ -126,7 +126,7 @@ export function createEnemySystem({
 
     const current = available.find(({ id }) => id === monster.facing);
     let choices = available;
-    if (current?.action.kind === "step") {
+    if (current?.action.kind === ACTION.step) {
       const alternatives = available.filter(({ id }) => id !== monster.facing);
       const changesDirection = (
         alternatives.length > 0 &&
@@ -135,7 +135,7 @@ export function createEnemySystem({
       choices = changesDirection ? alternatives : [current];
     }
     const resolved = choices[Math.floor(random() * choices.length)].action;
-    if (resolved.kind === "attack") {
+    if (resolved.kind === ACTION.attack) {
       monster.attack = { ...resolved, elapsed: 0, hitResolved: false };
       return true;
     }

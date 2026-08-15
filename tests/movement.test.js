@@ -4,7 +4,7 @@ import test from "node:test";
 import { createMovement } from "../src/game/actions/movement.js";
 
 const step = (dx, dy, dir, timeCost = 5) => ({ kind: "step", dx, dy, timeCost, facing: dir });
-const turn = (dir) => ({ kind: "turn", dx: 0, dy: 0, timeCost: 1, facing: dir });
+const turn = (dir) => ({ kind: "face", dx: 0, dy: 0, timeCost: 1, facing: dir });
 
 test("a step faces its direction and moves one cell when it lands", () => {
   const player = { col: 2, row: 2, facing: "down" };

@@ -16,9 +16,9 @@ export function createCharacter({ name }) {
     healthDrainSpeed: 400,
     actionCosts: {
       step: 10,
-      turn: 1,
+      face: 1,
       attack: 9,
-      consume: 20,
+      eat: 20,
     },
     attackEfficiency: 0.5,
     defenseEfficiency: 0.5,

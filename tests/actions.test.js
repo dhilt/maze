@@ -6,7 +6,7 @@ import { createWall } from "../src/world/maze.js";
 import { generateWorld } from "../src/world/world.js";
 import { createCharacterFixture } from "./fixtures/character.js";
 
-const COSTS = { step: 5, turn: 1, attack: 5, consume: 10 };
+const COSTS = { step: 5, face: 1, attack: 5, eat: 10 };
 
 function makeAdapter(
   world,
@@ -26,11 +26,11 @@ function makeAdapter(
   });
 }
 
-test("a clear direction change resolves to a turn", () => {
+test("a clear direction change resolves to a face", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   const adapter = makeAdapter(world, { col: 2, row: 2, facing: "down" });
   const a = adapter.adapt("right");
-  assert.equal(a.kind, "turn");
+  assert.equal(a.kind, "face");
   assert.deepEqual([a.dx, a.dy], [0, 0]);
   assert.equal(a.timeCost, 1);
   assert.equal(a.facing, "right");
@@ -64,12 +64,12 @@ test("actions capture the character's current cost when they resolve", () => {
   assert.equal(second.timeCost, 7);
 });
 
-test("a direction change resolves to a turn even when a wall blocks the route", () => {
+test("a direction change resolves to a face even when a wall blocks the route", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   world.at(2, 2).wallRight = createWall({ health: 20, defense: 2, impactWear: 1 });
   const adapter = makeAdapter(world, { col: 2, row: 2, facing: "down" });
   const a = adapter.adapt("right");
-  assert.equal(a.kind, "turn");
+  assert.equal(a.kind, "face");
   assert.equal(a.timeCost, 1);
   assert.equal(a.facing, "right"); // still faces the wall
 });
@@ -82,11 +82,11 @@ test("a blocked move in the current facing is cancelled as a no-op", () => {
   assert.equal(adapter.adapt("right"), null);
 });
 
-test("the world boundary transforms a move into a one-unit turn", () => {
+test("the world boundary transforms a move into a one-unit face", () => {
   const world = generateWorld({ width: 3, height: 3, seed: 1 });
   const adapter = makeAdapter(world, { col: 0, row: 0, facing: "down" });
   const a = adapter.adapt("up");
-  assert.equal(a.kind, "turn");
+  assert.equal(a.kind, "face");
   assert.equal(a.timeCost, 1);
   assert.equal(a.facing, "up");
 });
@@ -102,9 +102,9 @@ test("an occupied cell turns first, then a frontal move becomes an attack", () =
     ),
   );
 
-  const turn = adapter.adapt("right");
-  assert.equal(turn.kind, "turn");
-  assert.equal(turn.facing, "right");
+  const face = adapter.adapt("right");
+  assert.equal(face.kind, "face");
+  assert.equal(face.facing, "right");
 
   player.facing = "right";
   const attack = adapter.adapt("right");
@@ -147,7 +147,7 @@ test("attack facing a stored wall resolves to a wall attack", () => {
 
   const a = adapter.adapt("attack");
 
-  assert.equal(a.kind, "wallAttack");
+  assert.equal(a.kind, "attack");
   assert.equal(a.timeCost, 5);
   assert.equal(a.facing, null);
   assert.deepEqual(a.target, { x: 2, y: 2, dx: 1, dy: 0 });
@@ -158,7 +158,7 @@ test("attack facing the world perimeter resolves against an indestructible wall"
   const adapter = makeAdapter(world, { col: 0, row: 1, facing: "left" });
 
   const a = adapter.adapt("attack");
-  assert.equal(a.kind, "wallAttack");
+  assert.equal(a.kind, "attack");
   assert.deepEqual(a.target, { x: 0, y: 1, dx: -1, dy: 0 });
 });
 
@@ -187,21 +187,21 @@ test("consume resolves only for an injured hero with enough morale standing on a
     (event) => rejections.push(event),
   );
 
-  assert.deepEqual(adapter.adapt("consume"), {
-    kind: "consume",
+  assert.deepEqual(adapter.adapt("eat"), {
+    kind: "eat",
     timeCost: 10,
     target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
   });
 
   character.stats.morale = 2;
-  assert.equal(adapter.adapt("consume"), null);
-  assert.deepEqual(rejections, [{ action: "consume", reason: "morale" }]);
+  assert.equal(adapter.adapt("eat"), null);
+  assert.deepEqual(rejections, [{ action: "eat", reason: "morale" }]);
   character.stats.morale = 3;
   character.stats.health = character.statsMax.health;
-  assert.equal(adapter.adapt("consume"), null);
+  assert.equal(adapter.adapt("eat"), null);
   character.stats.health = 15;
   world.at(0, 0).objects.length = 0;
-  assert.equal(adapter.adapt("consume"), null);
+  assert.equal(adapter.adapt("eat"), null);
   assert.equal(rejections.length, 1, "other cancellation reasons do not flash Morale");
 });
 
@@ -228,7 +228,7 @@ test("consume selects an affordable carcass when several corpses share a cell", 
     (id) => monsters.find((monster) => monster.id === id) ?? null,
   );
 
-  assert.deepEqual(adapter.adapt("consume").target, {
+  assert.deepEqual(adapter.adapt("eat").target, {
     col: 0,
     row: 0,
     corpseId: "corpse-affordable",

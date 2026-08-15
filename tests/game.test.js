@@ -27,9 +27,9 @@ const TEST_CONFIG = Object.freeze({
 
 const TEST_ACTION_COSTS = Object.freeze({
   step: 5,
-  turn: 1,
+  face: 1,
   attack: 5,
-  consume: 10,
+  eat: 10,
 });
 
 function createContext() {
@@ -184,7 +184,7 @@ function createTestGame({
     monster.defenseEfficiency = 1;
     Object.assign(monster.actionCosts, {
       step: TEST_ACTION_COSTS.step,
-      turn: TEST_ACTION_COSTS.turn,
+      face: TEST_ACTION_COSTS.face,
       attack: TEST_ACTION_COSTS.attack,
     });
   }

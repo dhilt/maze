@@ -1,10 +1,12 @@
+import { ACTION } from "./intent.js";
+
 // Drives the character through a FIFO queue (max 2) of DESIRED actions. Right
 // before an action runs it goes through the adapter, which resolves it against
 // the live world into a concrete action — possibly transformed (blocked move →
-// short turn) or cancelled (dropped from the queue).
+// face) or cancelled (dropped from the queue).
 //
 // Queue rules: run in order pressed; cap 2 (overflow dropped). Directions may
-// repeat so a fast double press can mean turn + step. An explicit interaction
+// repeat so a fast double press can mean face + step. An explicit interaction
 // replaces the buffered action when necessary, but never interrupts the action
 // already in progress. A discrete attack may buffer another attack so repeated
 // strikes do not require frame-perfect input. When idle & empty, a confirmed
@@ -25,22 +27,21 @@ export function createActionScheduler({
   // Registry of executors by resolved-action kind. Adding an action kind means
   // adding an entry here; an unknown kind is a bug, so fail loudly.
   const executors = {
-    step: movement,
-    turn: movement,
-    attack,
-    wallAttack: attack,
-    consume,
+    [ACTION.step]: movement,
+    [ACTION.face]: movement,
+    [ACTION.attack]: attack,
+    [ACTION.eat]: consume,
   };
 
   function enqueue(id) {
     if (queue.length >= 2) {
       // A one-shot interaction must not disappear behind auto-repeated combat
       // or movement. Keep the active head and replace only its successor.
-      if (id === "consume") queue[1] = id;
+      if (id === ACTION.eat) queue[1] = id;
       return;
     }
     const last = queue.length ? queue[queue.length - 1] : null;
-    if (id === "consume" && last === "consume") return;
+    if (id === ACTION.eat && last === ACTION.eat) return;
     queue.push(id);
   }
 

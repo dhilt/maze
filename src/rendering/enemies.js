@@ -1,3 +1,4 @@
+import { ACTION } from "../game/actions/intent.js";
 import {
   selectMeatMonsterAttackFrame,
   selectMeatMonsterWalkFrame,
@@ -60,8 +61,8 @@ function drawDebugStats(ctx, monster, cellSize) {
 
 function occupiedCell(actor, move = actor.move) {
   return {
-    col: actor.col + (move?.kind === "step" ? move.dx : 0),
-    row: actor.row + (move?.kind === "step" ? move.dy : 0),
+    col: actor.col + (move?.kind === ACTION.step ? move.dx : 0),
+    row: actor.row + (move?.kind === ACTION.step ? move.dy : 0),
   };
 }
 

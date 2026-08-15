@@ -81,7 +81,7 @@ test("a wall attack damages at contact and removes the wall at zero", () => {
     damageRoll: () => 0.5,
   });
   const resolved = {
-    kind: "wallAttack",
+    kind: "attack",
     timeCost: 5,
     target: { x: 1, y: 1, dx: 1, dy: 0 },
   };
@@ -119,7 +119,7 @@ test("wall impacts carry wear across attack points", () => {
     onStatChange: (change) => changes.push(change),
   });
   const resolved = {
-    kind: "wallAttack",
+    kind: "attack",
     timeCost: 5,
     target: { x: 1, y: 1, dx: 1, dy: 0 },
   };

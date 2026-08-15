@@ -16,7 +16,7 @@ test("meat monster walking uses all four movement phases", () => {
   move.elapsed = 6;
   assert.equal(selectMeatMonsterWalkFrame(move), 3);
   assert.equal(selectMeatMonsterWalkFrame(null), 0);
-  assert.equal(selectMeatMonsterWalkFrame({ kind: "turn", elapsed: 1, timeCost: 1 }), 0);
+  assert.equal(selectMeatMonsterWalkFrame({ kind: "face", elapsed: 1, timeCost: 1 }), 0);
 });
 
 test("the downward lunge reaches and holds its flattened bite phase", () => {

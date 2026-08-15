@@ -9,18 +9,25 @@ export const DIRS = {
 
 export const DIR_IDS = Object.keys(DIRS);
 
-// Desired direction → turn, step, attack, or null.
+export const ACTION = Object.freeze({
+  face: "face",
+  step: "step",
+  attack: "attack",
+  eat: "eat",
+});
+
+// Desired direction → face, step, attack, or null.
 // towardBlocked: the hero will face a wall; a beast ignores that side.
-// cell(toCol, toRow): "attack" | "block" | null (open).
+// cell(toCol, toRow): "hostile" | "blocked" | null (open).
 export function resolveIntent({ actor, desired, world, towardBlocked, cell }) {
   const dir = DIRS[desired];
   const blocked = hasWall(world, actor.col, actor.row, dir.dx, dir.dy);
   if (actor.facing !== desired) {
     return blocked && !towardBlocked ? null : {
-      kind: "turn",
+      kind: ACTION.face,
       dx: 0,
       dy: 0,
-      timeCost: actor.actionCosts.turn,
+      timeCost: actor.actionCosts.face,
       facing: desired,
     };
   }
@@ -29,9 +36,9 @@ export function resolveIntent({ actor, desired, world, towardBlocked, cell }) {
   const toCol = actor.col + dir.dx;
   const toRow = actor.row + dir.dy;
   const hit = cell?.(toCol, toRow);
-  if (hit === "attack") {
+  if (hit === "hostile") {
     return {
-      kind: "attack",
+      kind: ACTION.attack,
       dx: 0,
       dy: 0,
       timeCost: actor.actionCosts.attack,
@@ -39,9 +46,9 @@ export function resolveIntent({ actor, desired, world, towardBlocked, cell }) {
       targetCell: { col: toCol, row: toRow },
     };
   }
-  if (hit === "block") return null;
+  if (hit === "blocked") return null;
   return {
-    kind: "step",
+    kind: ACTION.step,
     dx: dir.dx,
     dy: dir.dy,
     timeCost: actor.actionCosts.step,
@@ -53,7 +60,7 @@ export function resolveIntent({ actor, desired, world, towardBlocked, cell }) {
 // other actor is stepping into this one — that would be a head-on swap.
 export function actorBlocksEntry(actor, fromCol, fromRow, toCol, toRow) {
   const move = actor.move;
-  if (move?.kind !== "step") return actor.col === toCol && actor.row === toRow;
+  if (move?.kind !== ACTION.step) return actor.col === toCol && actor.row === toRow;
   const targetCol = actor.col + move.dx;
   const targetRow = actor.row + move.dy;
   if (targetCol === toCol && targetRow === toRow) return true;

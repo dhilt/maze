@@ -1,5 +1,6 @@
 import { heal } from "../../entities/character.js";
 import { CORPSE_KIND } from "../../world/corpse.js";
+import { ACTION } from "./intent.js";
 
 export function createConsume({
   world,
@@ -10,8 +11,8 @@ export function createConsume({
   let state = null;
 
   function begin(resolved) {
-    if (resolved.kind !== "consume") {
-      throw new Error(`Consume cannot execute action kind: ${resolved.kind}`);
+    if (resolved.kind !== ACTION.eat) {
+      throw new Error(`Eat cannot execute action kind: ${resolved.kind}`);
     }
     state = { ...resolved, elapsed: 0 };
   }

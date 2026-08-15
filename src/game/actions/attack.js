@@ -8,8 +8,8 @@ const SWORD_IMPACT = Object.freeze({
   wearMultiplier: 1,
 });
 
-// Executes concrete attack and wallAttack actions produced by the adapter.
-// Entity contacts are queued for the shared combat phase; walls resolve here.
+// Executes attack actions produced by the adapter. Entity contacts are queued
+// for the shared combat phase; a wall target resolves here.
 export function createAttack({
   world,
   character,
@@ -22,8 +22,8 @@ export function createAttack({
 
   function begin(resolved) {
     state = { ...resolved, elapsed: 0 };
-    if (resolved.kind === "wallAttack") state.contactResolved = false;
-    if (resolved.kind === "attack") state.hitResolved = false;
+    if (resolved.target) state.contactResolved = false;
+    if (resolved.targetCell) state.hitResolved = false;
   }
 
   function resolveWallContact(action) {
@@ -50,7 +50,7 @@ export function createAttack({
     const { previousElapsed, leftover, done } = advanceAction(state, deltaUnits);
     const evaluationElapsed = attackContactElapsed(state, previousElapsed);
     if (evaluationElapsed !== null) {
-      if (state.kind === "wallAttack") {
+      if (state.target) {
         state.contactResolved = true;
         resolveWallContact(state);
       } else {

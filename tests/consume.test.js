@@ -38,7 +38,7 @@ function setup({
 test("consume applies nutrition and morale cost only when the action completes", () => {
   const { world, character, changes, consume } = setup();
   consume.begin({
-    kind: "consume",
+    kind: "eat",
     timeCost: 10,
     target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
   });
@@ -59,7 +59,7 @@ test("consume applies nutrition and morale cost only when the action completes",
 test("consume leaves state unchanged when its linked entity no longer exists", () => {
   const { world, character, changes, consume } = setup({ entityExists: false });
   consume.begin({
-    kind: "consume",
+    kind: "eat",
     timeCost: 10,
     target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
   });
@@ -75,7 +75,7 @@ test("consume leaves state unchanged when its linked entity no longer exists", (
 test("consume is cancelled at completion if morale no longer covers its cost", () => {
   const { world, character, changes, consume } = setup({ morale: 2, moraleCost: 3 });
   consume.begin({
-    kind: "consume",
+    kind: "eat",
     timeCost: 10,
     target: { col: 0, row: 0, corpseId: "corpse-m1", entityId: "m1" },
   });

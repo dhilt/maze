@@ -19,7 +19,7 @@ export function createMeatMonster({ id, col, row, facing, random }) {
     statsMax: { ...stats },
     actionCosts: {
       step: 16,
-      turn: 1,
+      face: 1,
       attack: 10,
     },
     attackEfficiency: 0.33,

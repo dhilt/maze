@@ -1,12 +1,12 @@
 import { CORPSE_KIND } from "../../world/corpse.js";
 import { getWall } from "../../world/maze.js";
-import { DIRS, resolveIntent } from "./intent.js";
+import { ACTION, DIRS, resolveIntent } from "./intent.js";
 
 // The adapter turns a DESIRED action into the CONCRETE action to execute, judged
 // against the live world/player state right before it runs. It may:
 //   * pass through   — "attack" → an attack;
-//   * transform      — a new direction → a one-unit turn, or an attack facing
-//                      a stored wall → a wallAttack;
+//   * transform      — a new direction → a face, or an attack facing
+//                      a stored wall → an attack with a wall target;
 //   * cancel         — return null, and the scheduler drops it from the queue.
 // Every concrete action carries an integer timeCost in logical game-time units.
 export function createActionAdapter({
@@ -18,7 +18,7 @@ export function createActionAdapter({
   onActionRejected,
 }) {
   function adapt(desired) {
-    if (desired === "consume") {
+    if (desired === ACTION.eat) {
       const cell = world.at(player.col, player.row);
       if (!character || character.stats.health >= character.statsMax.health) return null;
 
@@ -42,13 +42,13 @@ export function createActionAdapter({
       }
       if (target === null) {
         if (blockedByMorale) {
-          onActionRejected?.({ action: "consume", reason: "morale" });
+          onActionRejected?.({ action: ACTION.eat, reason: "morale" });
         }
         return null;
       }
       return {
-        kind: "consume",
-        timeCost: character.actionCosts.consume,
+        kind: ACTION.eat,
+        timeCost: character.actionCosts.eat,
         target: {
           col: player.col,
           row: player.row,
@@ -58,11 +58,11 @@ export function createActionAdapter({
       };
     }
 
-    if (desired === "attack") {
+    if (desired === ACTION.attack) {
       const { dx, dy } = DIRS[player.facing] ?? { dx: 0, dy: 0 };
       if (getWall(world, player.col, player.row, dx, dy) !== null) {
         return {
-          kind: "wallAttack",
+          kind: ACTION.attack,
           dx: 0,
           dy: 0,
           timeCost: character.actionCosts.attack,
@@ -71,7 +71,7 @@ export function createActionAdapter({
         };
       }
       return {
-        kind: "attack",
+        kind: ACTION.attack,
         dx: 0,
         dy: 0,
         timeCost: character.actionCosts.attack,
@@ -91,7 +91,7 @@ export function createActionAdapter({
       world,
       towardBlocked: true,
       cell: (col, row) => (
-        findEntryBlocker(player.col, player.row, col, row) ? "attack" : null
+        findEntryBlocker(player.col, player.row, col, row) ? "hostile" : null
       ),
     });
   }

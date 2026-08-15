@@ -40,10 +40,10 @@ function makeInput() {
 }
 
 const stepOf = (dir) => ({ kind: "step", dx: 0, dy: 0, timeCost: 5, facing: dir });
-const turnOf = (dir) => ({ kind: "turn", dx: 0, dy: 0, timeCost: 1, facing: dir });
+const turnOf = (dir) => ({ kind: "face", dx: 0, dy: 0, timeCost: 1, facing: dir });
 const attackOf = () => ({ kind: "attack", dx: 0, dy: 0, timeCost: 5, facing: null });
-const wallAttackOf = () => ({ kind: "wallAttack", timeCost: 5, facing: null });
-const consumeOf = () => ({ kind: "consume", timeCost: 10 });
+const wallAttackOf = () => ({ kind: "attack", timeCost: 5, facing: null, target: { x: 0, y: 0, dx: 1, dy: 0 } });
+const eatOf = () => ({ kind: "eat", timeCost: 10 });
 
 function resolveByKind(map) {
   return (id) => (id in map ? map[id]() : stepOf(id));
@@ -97,7 +97,7 @@ test("two equal direction presses buffer a turn followed by a step", () => {
   input.queue("right", "right");
   scheduler.update(1);
 
-  assert.deepEqual(movement.log.map(({ kind }) => kind), ["turn", "step"]);
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face", "step"]);
   assert.equal(scheduler.activeId, "right");
 });
 
@@ -139,7 +139,7 @@ test("an explicit consume replaces a full buffered slot without interrupting the
   const movement = makeExecutor();
   const consume = makeExecutor();
   const input = makeInput();
-  const adapter = makeAdapter(resolveByKind({ consume: consumeOf }));
+  const adapter = makeAdapter(resolveByKind({ eat: eatOf }));
   const scheduler = createActionScheduler({
     adapter,
     movement,
@@ -150,15 +150,15 @@ test("an explicit consume replaces a full buffered slot without interrupting the
 
   input.queue("right");
   scheduler.update(0.5);
-  input.queue("up", "consume");
+  input.queue("up", "eat");
   scheduler.update(0.5);
 
   assert.equal(scheduler.activeId, "right");
-  assert.equal(scheduler.buffered, "consume");
+  assert.equal(scheduler.buffered, "eat");
   assert.equal(consume.log.length, 0);
 
   scheduler.update(4);
-  assert.equal(scheduler.activeId, "consume");
+  assert.equal(scheduler.activeId, "eat");
   assert.equal(consume.log.length, 1);
 });
 
@@ -208,8 +208,8 @@ test("an unknown resolved kind throws instead of silently moving", () => {
 
 test("resolved action kinds route to their registered executors", () => {
   for (const { id, resolve, executorName, kind } of [
-    { id: "attack", resolve: wallAttackOf, executorName: "attack", kind: "wallAttack" },
-    { id: "consume", resolve: consumeOf, executorName: "consume", kind: "consume" },
+    { id: "attack", resolve: wallAttackOf, executorName: "attack", kind: "attack" },
+    { id: "eat", resolve: eatOf, executorName: "consume", kind: "eat" },
   ]) {
     const input = makeInput();
     const executors = {
@@ -229,8 +229,8 @@ test("resolved action kinds route to their registered executors", () => {
     assert.equal(executors[executorName].log.length, 1);
     assert.equal(executors[executorName].log[0].kind, kind);
     assert.equal(scheduler.activeId, id);
-    if (id === "consume") {
-      assert.equal(scheduler.consumeState.kind, "consume");
+    if (id === "eat") {
+      assert.equal(scheduler.consumeState.kind, "eat");
       assert.equal(scheduler.consumeState.elapsed, 1);
     }
   }

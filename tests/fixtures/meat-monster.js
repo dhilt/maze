@@ -30,7 +30,7 @@ export function createMeatMonsterFixture({
     statsMax: { ...concreteStats, ...statsMax },
     actionCosts: {
       step: 16,
-      turn: 1,
+      face: 1,
       attack: 10,
       ...actionCosts,
     },

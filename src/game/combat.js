@@ -1,4 +1,5 @@
 import { resolveDamage, resolveImpact } from "./actions/impact.js";
+import { ACTION } from "./actions/intent.js";
 
 const SAME_TIME_EPSILON = 1e-9;
 
@@ -49,8 +50,8 @@ export function createCombat({
 
   function occupiesCell(combatant, cell) {
     const move = combatant.move;
-    const col = combatant.position.col + (move?.kind === "step" ? move.dx : 0);
-    const row = combatant.position.row + (move?.kind === "step" ? move.dy : 0);
+    const col = combatant.position.col + (move?.kind === ACTION.step ? move.dx : 0);
+    const row = combatant.position.row + (move?.kind === ACTION.step ? move.dy : 0);
     return col === cell.col && row === cell.row;
   }
 

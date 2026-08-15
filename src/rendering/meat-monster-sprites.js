@@ -1,4 +1,5 @@
 import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
+import { ACTION } from "../game/actions/intent.js";
 
 // The lunge arrives quickly and holds the flattened bite pose long enough to
 // read relative to the monster's configured attack duration.
@@ -13,7 +14,7 @@ export function selectMeatMonsterWalkFrame(
   frameCount = MEAT_MONSTER_ASSET_PACK.animations.walk.frames,
 ) {
   const count = Math.max(1, Math.floor(frameCount));
-  if (move?.kind !== "step") return 0;
+  if (move?.kind !== ACTION.step) return 0;
   const progress = Math.min(
     Math.max(move.elapsed / move.timeCost, 0),
     0.999999,

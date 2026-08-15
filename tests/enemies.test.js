@@ -301,12 +301,12 @@ test("a frontal collision attacks, while a side collision only turns", () => {
     col: 0,
     row: 0,
     facing: "left",
-    actionCosts: { turn: 2 },
+    actionCosts: { face: 2 },
   });
   const sidewaysSystem = createSystem({ world, player, monsters: [sideways] });
   sidewaysSystem.update(1);
   assert.equal(sideways.attack, null);
-  assert.equal(sideways.move.kind, "turn");
+  assert.equal(sideways.move.kind, "face");
   assert.equal(sideways.move.timeCost, 2);
   assert.equal(sideways.facing, "right");
 });

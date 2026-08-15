@@ -9,7 +9,7 @@ const actor = (facing, extras = {}) => ({
   col: 2,
   row: 2,
   facing,
-  actionCosts: { step: 5, turn: 1, attack: 7 },
+  actionCosts: { step: 5, face: 1, attack: 7 },
   ...extras,
 });
 
@@ -34,7 +34,7 @@ test("the hero turns toward a wall; a beast ignores that side", () => {
   world.at(2, 2).wallRight = createWall({ health: 20, defense: 2, impactWear: 1 });
 
   const turn = resolve("right", { facing: "down", world, towardBlocked: true });
-  assert.equal(turn.kind, "turn");
+  assert.equal(turn.kind, "face");
   assert.equal(turn.facing, "right");
   assert.equal(resolve("right", { facing: "down", world, towardBlocked: false }), null);
   assert.equal(resolve("right", { facing: "right", world }), null);
@@ -48,10 +48,10 @@ test("a clear aligned direction is a step", () => {
 });
 
 test("a faced occupant is an attack; a blocked cell cancels", () => {
-  const cell = (col, row) => (col === 3 && row === 2 ? "attack" : null);
-  assert.equal(resolve("right", { facing: "down", cell }).kind, "turn");
+  const cell = (col, row) => (col === 3 && row === 2 ? "hostile" : null);
+  assert.equal(resolve("right", { facing: "down", cell }).kind, "face");
   assert.deepEqual(resolve("right", { facing: "right", cell }).targetCell, { col: 3, row: 2 });
-  assert.equal(resolve("right", { facing: "right", cell: () => "block" }), null);
+  assert.equal(resolve("right", { facing: "right", cell: () => "blocked" }), null);
 });
 
 test("actorBlocksEntry reserves a step destination and forbids head-on swaps", () => {

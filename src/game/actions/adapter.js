@@ -1,12 +1,6 @@
 import { CORPSE_KIND } from "../../world/corpse.js";
-import { getWall, hasWall } from "../../world/maze.js";
-
-const DIRS = {
-  up: [0, -1],
-  down: [0, 1],
-  left: [-1, 0],
-  right: [1, 0],
-};
+import { getWall } from "../../world/maze.js";
+import { DIRS, resolveIntent } from "./intent.js";
 
 // The adapter turns a DESIRED action into the CONCRETE action to execute, judged
 // against the live world/player state right before it runs. It may:
@@ -23,17 +17,6 @@ export function createActionAdapter({
   findEntityById,
   onActionRejected,
 }) {
-  function attackCell(col, row) {
-    return {
-      kind: "attack",
-      dx: 0,
-      dy: 0,
-      timeCost: character.actionCosts.attack,
-      facing: null,
-      targetCell: { col, row },
-    };
-  }
-
   function adapt(desired) {
     if (desired === "consume") {
       const cell = world.at(player.col, player.row);
@@ -76,7 +59,7 @@ export function createActionAdapter({
     }
 
     if (desired === "attack") {
-      const [dx, dy] = DIRS[player.facing] ?? [0, 0];
+      const { dx, dy } = DIRS[player.facing] ?? { dx: 0, dy: 0 };
       if (getWall(world, player.col, player.row, dx, dy) !== null) {
         return {
           kind: "wallAttack",
@@ -87,49 +70,30 @@ export function createActionAdapter({
           target: { x: player.col, y: player.row, dx, dy },
         };
       }
-      const col = player.col + dx;
-      const row = player.row + dy;
-      return attackCell(col, row);
-    }
-
-    const [dx0, dy0] = DIRS[desired];
-    // A direction change is always its own action, even on a clear path. A
-    // second press or a confirmed hold resolves after facing has changed.
-    if (player.facing !== desired) {
       return {
-        kind: "turn",
+        kind: "attack",
         dx: 0,
         dy: 0,
-        timeCost: character.actionCosts.turn,
-        facing: desired,
+        timeCost: character.actionCosts.attack,
+        facing: null,
+        targetCell: { col: player.col + dx, row: player.row + dy },
       };
     }
 
-    let dx = dx0;
-    let dy = dy0;
-    if (player.col + dx < 0 || player.col + dx >= world.width) dx = 0;
-    if (player.row + dy < 0 || player.row + dy >= world.height) dy = 0;
-    if (dx !== 0 && hasWall(world, player.col, player.row, dx, 0)) dx = 0;
-    if (dy !== 0 && hasWall(world, player.col, player.row, 0, dy)) dy = 0;
-    const blocker = (dx !== 0 || dy !== 0)
-      ? findEntryBlocker(player.col, player.row, player.col + dx, player.row + dy)
-      : null;
-    if (blocker !== null) {
-      return attackCell(player.col + dx, player.row + dy);
-    }
-
-    if (dx !== 0 || dy !== 0) {
-      return {
-        kind: "step",
-        dx,
-        dy,
-        timeCost: character.actionCosts.step,
-        facing: desired,
-      };
-    }
-    // Looking into the same obstruction changes no actor state. Drop that intent
-    // without occupying the action bus; continuous world time still advances.
-    return null;
+    return resolveIntent({
+      actor: {
+        col: player.col,
+        row: player.row,
+        facing: player.facing,
+        actionCosts: character.actionCosts,
+      },
+      desired,
+      world,
+      towardBlocked: true,
+      cell: (col, row) => (
+        findEntryBlocker(player.col, player.row, col, row) ? "attack" : null
+      ),
+    });
   }
 
   return { adapt };

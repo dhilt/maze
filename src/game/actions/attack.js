@@ -1,9 +1,6 @@
 import { damageWall, getWall } from "../../world/maze.js";
-import {
-  ATTACK_ACTIVE_END_PROGRESS,
-  ATTACK_CONTACT_PROGRESS,
-} from "./attack-timing.js";
 import { resolveImpact } from "./impact.js";
+import { advanceAction, attackContactElapsed } from "./runner.js";
 
 const SWORD_IMPACT = Object.freeze({
   powerStat: "attack",
@@ -50,20 +47,13 @@ export function createAttack({
 
   function update(deltaUnits, startOffset = 0) {
     if (!state) return 0;
-    const previousElapsed = state.elapsed;
-    state.elapsed += deltaUnits;
-    const contactElapsed = state.timeCost * ATTACK_CONTACT_PROGRESS;
-    if (
-      state.kind === "wallAttack" &&
-      !state.contactResolved &&
-      state.elapsed >= contactElapsed
-    ) {
-      state.contactResolved = true;
-      resolveWallContact(state);
-    } else if (state.kind === "attack" && state.targetCell && !state.hitResolved) {
-      const activeEnd = state.timeCost * ATTACK_ACTIVE_END_PROGRESS;
-      if (state.elapsed >= contactElapsed && previousElapsed < activeEnd) {
-        const evaluationElapsed = Math.max(previousElapsed, contactElapsed);
+    const { previousElapsed, leftover, done } = advanceAction(state, deltaUnits);
+    const evaluationElapsed = attackContactElapsed(state, previousElapsed);
+    if (evaluationElapsed !== null) {
+      if (state.kind === "wallAttack") {
+        state.contactResolved = true;
+        resolveWallContact(state);
+      } else {
         onImpact({
           at: startOffset + evaluationElapsed - previousElapsed,
           attacker: { type: "player" },
@@ -72,12 +62,9 @@ export function createAttack({
         });
       }
     }
-    if (state.elapsed >= state.timeCost) {
-      const leftover = state.elapsed - state.timeCost;
-      state = null;
-      return leftover;
-    }
-    return 0;
+    if (!done) return 0;
+    state = null;
+    return leftover;
   }
 
   return {

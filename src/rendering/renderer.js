@@ -6,6 +6,7 @@
 import { KNIGHT_ASSET_PACK } from "../assets/packs/knight.js";
 import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
 import {
+  getKnightAttackOffset,
   KNIGHT_IDLE_FRAME_UNITS,
   selectAttackFrame,
   selectConsumeFrame,
@@ -137,6 +138,7 @@ export function createRenderer(ctx, config) {
     let img = idleFrames[
       Math.floor(idleTime / KNIGHT_IDLE_FRAME_UNITS) % idleFrames.length
     ];
+    let attackOffset = { x: 0, y: 0 };
     if (move) {
       const frames = KNIGHT_SPRITES.walk[facing];
       const progress = Math.min(move.elapsed / move.timeCost, 0.999999);
@@ -145,7 +147,10 @@ export function createRenderer(ctx, config) {
     if (attack) {
       const frames = KNIGHT_SPRITES.attack[facing];
       const progress = Math.min(attack.elapsed / attack.timeCost, 0.999999);
-      img = frames[selectAttackFrame(progress, frames.length)];
+      const frame = selectAttackFrame(progress, frames.length);
+      img = frames[frame];
+      // Render-only lunge: the occupied cell, collision and damage timing stay put.
+      if (!consume) attackOffset = getKnightAttackOffset(facing, frame, CELL);
     }
     if (consume) {
       // The corpse occupies the same cell and is drawn by the background-object
@@ -156,7 +161,7 @@ export function createRenderer(ctx, config) {
       img = frames[selectConsumeFrame(progress, frames.length)];
     }
     if (img.complete && img.naturalWidth) {
-      ctx.drawImage(img, sx, sy, CELL, CELL);
+      ctx.drawImage(img, sx + attackOffset.x, sy + attackOffset.y, CELL, CELL);
     }
   }
 

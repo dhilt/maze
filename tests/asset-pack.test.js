@@ -8,6 +8,7 @@ import {
   listAssetPackUrls,
 } from "../src/assets/asset-pack.js";
 import { ASSET_PACKS } from "../src/assets/catalog.js";
+import { KNIGHT_ASSET_PACK } from "../src/assets/packs/knight.js";
 
 const TEST_PACK = defineAssetPack({
   id: "actor",
@@ -47,7 +48,27 @@ test("a declarative pack expands animations and standalone images in order", () 
   ]);
 });
 
-test("every declared production asset is a committed 64px PNG", async () => {
+test("the pixel knight pack includes all actions and uses the attack rest pose for idle", async () => {
+  const directions = ["down", "up", "left", "right"];
+  assert.deepEqual(KNIGHT_ASSET_PACK.animations, {
+    idle: { directions, frames: 1 },
+    walk: { directions, frames: 4 },
+    attack: { directions, frames: 10 },
+    consume: { directions: ["down"], frames: 8 },
+  });
+  assert.equal(listAssetPackUrls(KNIGHT_ASSET_PACK).length, 68);
+
+  const root = new URL(`../${KNIGHT_ASSET_PACK.root.slice(2)}/`, import.meta.url);
+  for (const direction of directions) {
+    const [idle, attackStart] = await Promise.all([
+      readFile(new URL(`idle/${direction}/0.png`, root)),
+      readFile(new URL(`attack/${direction}/0.png`, root)),
+    ]);
+    assert.deepEqual(idle, attackStart, `${direction}: idle must match the rest pose`);
+  }
+});
+
+test("every declared production asset is a 64px PNG", async () => {
   const urls = Object.values(ASSET_PACKS).flatMap(listAssetPackUrls);
 
   await Promise.all(urls.map(async (url) => {

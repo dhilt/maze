@@ -25,6 +25,7 @@ export function createGame({
   const ctx = canvas.getContext("2d");
   canvas.width = config.viewCols * config.cellSize;
   canvas.height = config.viewRows * config.cellSize;
+  ctx.imageSmoothingEnabled = false;
 
   const renderer = createRenderer(ctx, {
     cellSize: config.cellSize,

@@ -24,7 +24,7 @@ test("the level bus advances once per level and stops at the final one", () => {
   assert.deepEqual(bus.state, {
     number: 1,
     total,
-    progress: 1 / (total + 1),
+    progress: 0,
     isLast: total === 1,
     isComplete: false,
     definition: LEVELS[0],
@@ -32,12 +32,12 @@ test("the level bus advances once per level and stops at the final one", () => {
   for (let number = 2; number <= total; number += 1) {
     assert.equal(bus.advance(), true);
     assert.equal(bus.number, number);
-    assert.equal(bus.progress, number / (total + 1));
+    assert.equal(bus.progress, (number - 1) / total);
     assert.equal(bus.current, LEVELS[number - 1]);
   }
   assert.equal(bus.isLast, true);
   assert.equal(bus.isComplete, false);
-  assert.ok(bus.progress < 1);
+  assert.equal(bus.progress, (total - 1) / total);
   assert.equal(bus.advance(), false);
   assert.equal(bus.current, LEVELS.at(-1));
   assert.equal(bus.complete(), true);

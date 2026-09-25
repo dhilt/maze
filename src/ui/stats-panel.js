@@ -56,11 +56,13 @@ function valueRow(label, value) {
 
 function levelRow(level) {
   const progress = Math.max(0, Math.min(1, level.progress));
+  const objectiveProgress = Math.max(0, Math.min(1, level.objectiveProgress ?? 0));
   const color = `rgb(${GREEN[0]}, ${GREEN[1]}, ${GREEN[2]})`;
   return (
     `<div class="stats-row stats-level">` +
       `<div class="stats-head"><span>Level</span><span class="stats-value">${level.number} / ${level.total}</span></div>` +
       `<div class="stats-bar"><div class="stats-fill" style="width:${progress * 100}%;background:${color}"></div></div>` +
+      `<div class="stats-remainder"><div class="stats-remainder-fill" data-stat="level" style="width:${objectiveProgress * 100}%;background:${color}"></div></div>` +
     `</div>`
   );
 }
@@ -109,6 +111,14 @@ export function createStatsPanel(root) {
     if (current) update(current);
   }
 
+  function setObjectiveProgress(progress) {
+    if (!currentLevel) return;
+    const objectiveProgress = Math.max(0, Math.min(1, progress));
+    currentLevel = { ...currentLevel, objectiveProgress };
+    const fill = root.querySelector('.stats-level [data-stat="level"]');
+    if (fill) fill.style.width = `${objectiveProgress * 100}%`;
+  }
+
   // Remaining is the fraction of the current sub-point still available.
   function setRemainder(stat, remaining) {
     const fill = remainderFills.get(stat);
@@ -130,5 +140,5 @@ export function createStatsPanel(root) {
     label.classList.add("is-rejected");
   }
 
-  return { update, setRemainder, setDebug, setLevel, notify };
+  return { update, setRemainder, setDebug, setLevel, setObjectiveProgress, notify };
 }

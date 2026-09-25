@@ -29,6 +29,7 @@ export function createLevelSession({
   input,
   onStatsDirty,
   onActionRejected,
+  onObjectiveProgress,
 }) {
   const worldSeed = levelSeed(config.worldSeed, level.number, 0x9e3779b9);
   const concreteMazeSeed = levelSeed(mazeSeed, level.number, 0x85ebca6b);
@@ -87,6 +88,7 @@ export function createLevelSession({
         ...event,
         at: event.at === null ? null : frameStartedAt + event.at,
       });
+      onObjectiveProgress?.(exitController.defeatProgress);
     },
   });
   const enemies = createEnemySystem({
@@ -148,6 +150,7 @@ export function createLevelSession({
     player,
     monsters,
     reachedExit,
+    get defeatProgress() { return exitController.defeatProgress; },
     update({ dt, time, realTimestamp }) {
       frameStartedAt = time - dt;
       scheduler.update(dt, realTimestamp);

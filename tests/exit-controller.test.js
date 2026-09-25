@@ -23,10 +23,13 @@ test("player victories start revealing only when the initial population reaches 
 
   assert.equal(controller.initialMonsterCount, 5);
   assert.equal(controller.revealAtOrBelow, 2);
+  assert.equal(controller.defeatProgress, 0);
   assert.equal(controller.phase, EXIT_PHASES.HIDDEN);
 
   controller.onMonsterDeath({ monster: monsters[0], killer: "player", at: 1 });
+  assert.equal(controller.defeatProgress, 1 / 3);
   controller.onMonsterDeath({ monster: monsters[1], killer: "player", at: 2 });
+  assert.equal(controller.defeatProgress, 2 / 3);
   assert.equal(controller.phase, EXIT_PHASES.HIDDEN);
 
   assert.equal(controller.onMonsterDeath({
@@ -35,8 +38,12 @@ test("player victories start revealing only when the initial population reaches 
     at: 3,
   }), true);
   assert.equal(controller.remainingMonsterCount, 2);
+  assert.equal(controller.defeatProgress, 1);
   assert.equal(cell.exit.phase, EXIT_PHASES.REVEALING);
   assert.equal(cell.exit.revealStartedAt, 3);
+
+  controller.onMonsterDeath({ monster: monsters[3], killer: "player", at: 4 });
+  assert.equal(controller.defeatProgress, 1, "progress stays full after revealing begins");
 });
 
 test("time alone cannot start a hidden portal", () => {

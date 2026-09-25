@@ -143,7 +143,7 @@ test("restarts a rejected stat label notification", () => {
 test("renders the final active level below full and completion at full", () => {
   const root = createRoot();
   const panel = createStatsPanel(root);
-  const finalLevelProgress = 5 / 6;
+  const finalLevelProgress = 4 / 5;
   panel.setLevel({ number: 5, total: 5, progress: finalLevelProgress });
   panel.update(createPanelCharacter());
 
@@ -155,4 +155,29 @@ test("renders the final active level below full and completion at full", () => {
   panel.setLevel({ number: 5, total: 5, progress: 1 });
   assert.match(root.innerHTML, />5 \/ 5</);
   assert.match(root.innerHTML, /width:100%/);
+});
+
+test("level sub-bar advances with defeats and resets on the next level", () => {
+  const root = createRoot();
+  const levelFill = { style: {} };
+  root.querySelector = (selector) => selector.includes('data-stat="level"') ? levelFill : null;
+  const panel = createStatsPanel(root);
+  const level = { number: 2, total: 5, progress: 1 / 5 };
+
+  panel.setLevel({ ...level, objectiveProgress: 0 });
+  panel.update(createPanelCharacter());
+  assert.match(root.innerHTML, /data-stat="level" style="width:0%;background:rgb\(104, 156, 112\)/);
+
+  panel.setObjectiveProgress(0.5);
+  assert.equal(levelFill.style.width, "50%");
+  panel.update(createPanelCharacter());
+  assert.match(root.innerHTML, /data-stat="level" style="width:50%;background:rgb\(104, 156, 112\)/);
+  assert.ok(root.innerHTML.includes(`width:${level.progress * 100}%`), "main level bar stays unchanged");
+
+  panel.setObjectiveProgress(1);
+  panel.update(createPanelCharacter());
+  assert.match(root.innerHTML, /data-stat="level" style="width:100%;background:rgb\(104, 156, 112\)/);
+
+  panel.setLevel({ number: 3, total: 5, progress: 2 / 5, objectiveProgress: 0 });
+  assert.match(root.innerHTML, /data-stat="level" style="width:0%;background:rgb\(104, 156, 112\)/);
 });

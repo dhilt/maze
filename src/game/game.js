@@ -44,6 +44,10 @@ export function createGame({
   let statsDirty = false;
   let rejectedStat = null;
 
+  function setLevelPanel(progress) {
+    statsPanel.setLevel({ ...levelBus.state, objectiveProgress: progress });
+  }
+
   function buildLevelSession() {
     return createLevelSession({
       level: levelBus.current,
@@ -54,11 +58,12 @@ export function createGame({
       input,
       onStatsDirty: () => { statsDirty = true; },
       onActionRejected: ({ reason }) => { rejectedStat = reason; },
+      onObjectiveProgress: statsPanel.setObjectiveProgress,
     });
   }
 
   let session = buildLevelSession();
-  statsPanel.setLevel(levelBus.state);
+  setLevelPanel(session.defeatProgress);
   statsPanel.update(character);
   statsPanel.setDebug(debugControl?.checked ?? config.debug);
 
@@ -73,7 +78,7 @@ export function createGame({
     if (!levelBus.advance()) return false;
     session = buildLevelSession();
     healthDrain.reset();
-    statsPanel.setLevel(levelBus.state);
+    setLevelPanel(session.defeatProgress);
     statsPanel.setRemainder("health", healthDrain.remaining);
     statsPanel.setRemainder("attack", statWear.remaining("attack"));
     return true;
@@ -125,7 +130,7 @@ export function createGame({
     if (session.reachedExit()) {
       if (levelBus.isLast) {
         levelBus.complete();
-        statsPanel.setLevel(levelBus.state);
+        setLevelPanel(session.defeatProgress);
         finish("escaped");
         return;
       }

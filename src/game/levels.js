@@ -11,8 +11,8 @@ export function createLevelBus() {
   let completed = false;
 
   function progress() {
-    // Active levels occupy the first N states; clearing the final level is N + 1.
-    return completed ? 1 : (index + 1) / (LEVELS.length + 1);
+    // The bar measures cleared levels, not the number of the active level.
+    return completed ? 1 : index / LEVELS.length;
   }
 
   function snapshot() {

@@ -27,6 +27,7 @@ export function createExitController({
   const exit = cell.exit;
   const initialMonsterCount = remaining.size;
   const revealAtOrBelow = Math.floor(initialMonsterCount * revealRatio);
+  const requiredDefeats = initialMonsterCount - revealAtOrBelow;
 
   function onMonsterDeath({ monster, killer, at }) {
     if (killer !== "player" || !remaining.has(monster?.id)) return false;
@@ -63,6 +64,10 @@ export function createExitController({
     get initialMonsterCount() { return initialMonsterCount; },
     get remainingMonsterCount() { return remaining.size; },
     get revealAtOrBelow() { return revealAtOrBelow; },
+    get defeatProgress() {
+      if (requiredDefeats === 0) return 0;
+      return Math.min(1, (initialMonsterCount - remaining.size) / requiredDefeats);
+    },
     get phase() { return exit.phase; },
     get open() { return isExitOpen(cell); },
   };

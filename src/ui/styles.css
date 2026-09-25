@@ -188,7 +188,7 @@ canvas {
   transition: width 0.2s ease;
 }
 
-/* 1px remainder for the current Health or Attack point. */
+/* 1px sub-bars for stat remainders and the current level objective. */
 .stats-remainder {
   height: 1px;
   margin-top: -3px;

@@ -155,8 +155,9 @@ export function createLevelSession({
       frameStartedAt = time - dt;
       scheduler.update(dt, realTimestamp);
       enemies.update(dt);
-      combat.resolve();
+      const { healthLosses } = combat.resolve();
       exitController.advance(time);
+      return healthLosses;
     },
     updateCamera() { camera.update(); },
     get move() { return scheduler.move; },

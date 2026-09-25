@@ -5,6 +5,8 @@
 
 import { KNIGHT_ASSET_PACK } from "../assets/packs/knight.js";
 import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
+import { actorPixelPosition } from "./actor-position.js";
+import { createBloodEffects } from "./blood.js";
 import {
   getKnightAttackOffset,
   KNIGHT_IDLE_FRAME_UNITS,
@@ -36,11 +38,22 @@ export function createRenderer(ctx, config) {
     corpse: { [MEAT_MONSTER_ASSET_PACK.id]: meatMonsterAssets.images.corpse },
   };
   const ENEMY_RENDER_STATE = createEnemyRenderState();
+  const blood = createBloodEffects({ cellSize: CELL });
   const W = VC * CELL;
   const H = VR * CELL;
   const numFont = `${Math.round(CELL * 0.17)}px system-ui, sans-serif`;
   let floorRenderer = null;
   let floorCacheKey = null;
+  let renderedWorld = null;
+
+  function positionOf(ref, state) {
+    if (ref.type === "player") {
+      return actorPixelPosition(state.player, state.move, CELL);
+    }
+    if (ref.type !== "entity") return null;
+    const entity = state.monsters?.find(({ id }) => id === ref.id);
+    return entity ? actorPixelPosition(entity, entity.move, CELL) : null;
+  }
 
   function getFloor(world, requestedStyle) {
     const seed = Number.isFinite(world.seed) ? world.seed : 1;
@@ -123,13 +136,7 @@ export function createRenderer(ctx, config) {
   }
 
   function drawPlayer({ player, move, attack, consume, facing, tick }, cam) {
-    let wx = player.col * CELL;
-    let wy = player.row * CELL;
-    if (move) {
-      const progress = Math.min(move.elapsed / move.timeCost, 1);
-      wx += move.dx * CELL * progress;
-      wy += move.dy * CELL * progress;
-    }
+    const { x: wx, y: wy } = actorPixelPosition(player, move, CELL);
     const sx = wx - cam.px;
     const sy = wy - cam.py;
 
@@ -170,6 +177,16 @@ export function createRenderer(ctx, config) {
     const dbg = state.debug !== undefined ? state.debug : debug; // live toggle, else config default
     const activeFloorStyle = state.floorStyle || floorStyle;
     const time = Number.isFinite(state.tick?.time) ? state.tick.time : 0;
+    const presentationTime = (state.tick?.realTimestamp ?? 0) / 1000;
+    if (world !== renderedWorld) {
+      blood.clear();
+      renderedWorld = world;
+    }
+    for (const hit of state.healthLosses ?? []) {
+      const target = positionOf(hit.target, state);
+      const attacker = positionOf(hit.attacker, state);
+      if (target && attacker) blood.spawn({ target, attacker }, presentationTime);
+    }
     ctx.clearRect(0, 0, W, H);
 
     // All world-space rendering is clipped to the actual world rectangle. This
@@ -199,7 +216,9 @@ export function createRenderer(ctx, config) {
       debug: dbg,
     });
     drawPlayer(state, cam);
+    const hasActiveEffects = blood.draw(ctx, cam, presentationTime);
     ctx.restore();
+    return { hasActiveEffects };
   }
 
   return { render };

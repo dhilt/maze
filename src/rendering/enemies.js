@@ -1,4 +1,5 @@
 import { ACTION } from "../game/actions/intent.js";
+import { actorPixelPosition } from "./actor-position.js";
 import {
   selectMeatMonsterAttackFrame,
   selectMeatMonsterWalkFrame,
@@ -14,17 +15,6 @@ export const HEALTH_BAR_HIDE_DELAY_SECONDS = 1;
 
 export function createEnemyRenderState() {
   return { healthBarVisibleUntil: new Map() };
-}
-
-function pixelPosition(monster, cellSize) {
-  let x = monster.col * cellSize;
-  let y = monster.row * cellSize;
-  if (monster.move) {
-    const progress = Math.min(monster.move.elapsed / monster.move.timeCost, 1);
-    x += monster.move.dx * cellSize * progress;
-    y += monster.move.dy * cellSize * progress;
-  }
-  return { x, y };
 }
 
 function drawHealthBar(ctx, monster, cellSize) {
@@ -93,7 +83,7 @@ function drawMeatMonster(
   renderState,
   debug,
 ) {
-  const position = pixelPosition(monster, cellSize);
+  const position = actorPixelPosition(monster, monster.move, cellSize);
   const x = position.x - cam.px + cellSize / 2;
   const y = position.y - cam.py + cellSize / 2;
   let frames = sprites?.walk?.[monster.facing];

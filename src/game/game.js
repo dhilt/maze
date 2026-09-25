@@ -84,6 +84,34 @@ export function createGame({
     return true;
   }
 
+  function renderCurrent(tick, healthLosses = []) {
+    const debug = debugControl?.checked ?? config.debug;
+    return renderer.render({
+      player: session.player,
+      move: session.move,
+      attack: session.attack,
+      consume: session.consume,
+      facing: session.facing,
+      cam: session.cam,
+      world: session.world,
+      exitCell: session.exitCell,
+      monsters: session.monsters,
+      tick,
+      healthLosses,
+      debug,
+      floorStyle: config.floorStyle,
+    });
+  }
+
+  function renderDeath(now, finalTick) {
+    const { hasActiveEffects } = renderCurrent({ ...finalTick, realTimestamp: now });
+    if (hasActiveEffects) {
+      frameId = requestAnimationFrame((next) => renderDeath(next, finalTick));
+    } else {
+      finish("died");
+    }
+  }
+
   function frame(now) {
     const tick = gameTime.advance(realClock.tick(now));
     const debug = debugControl?.checked ?? config.debug;
@@ -91,8 +119,9 @@ export function createGame({
 
     if (healthDrain.advance(tick.dt) > 0) statsDirty = true;
     let died = character.stats.health <= 0;
+    let healthLosses = [];
     if (!died) {
-      session.update(tick);
+      healthLosses = session.update(tick);
       died = character.stats.health <= 0;
     }
     if (statsDirty) {
@@ -106,25 +135,17 @@ export function createGame({
     statsPanel.setRemainder("health", healthDrain.remaining);
     statsPanel.setRemainder("attack", statWear.remaining("attack"));
     session.updateCamera();
-    renderer.render({
-      player: session.player,
-      move: session.move,
-      attack: session.attack,
-      consume: session.consume,
-      facing: session.facing,
-      cam: session.cam,
-      world: session.world,
-      exitCell: session.exitCell,
-      monsters: session.monsters,
-      tick,
-      debug,
-      floorStyle: config.floorStyle,
-    });
+    const { hasActiveEffects } = renderCurrent(tick, healthLosses);
 
     // Render the landed portal frame before replacing its world. Death keeps
     // priority over both a level transition and final escape.
     if (died) {
-      finish("died");
+      if (hasActiveEffects) {
+        // Freeze simulation, but let the lethal hit remain visible before Game over.
+        frameId = requestAnimationFrame((next) => renderDeath(next, tick));
+      } else {
+        finish("died");
+      }
       return;
     }
     if (session.reachedExit()) {

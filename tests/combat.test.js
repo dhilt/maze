@@ -76,6 +76,10 @@ test("equal-time attacks damage both combatants from one snapshot", () => {
   assert.equal(character.stats.health, 18);
   assert.equal(monster.stats.health, 18);
   assert.equal(result.impacts.length, 2);
+  assert.deepEqual(result.healthLosses.map(({ target, amount }) => [target.type, amount]), [
+    ["entity", 2],
+    ["player", 2],
+  ]);
 });
 
 test("mutual death is possible when contacts happen at the same time", () => {
@@ -89,6 +93,23 @@ test("mutual death is possible when contacts happen at the same time", () => {
   assert.deepEqual(result.deadMonsterIds, ["monster-1"]);
   assert.equal(monsters.length, 1, "dead entities remain available as history");
   assert.equal(monsters[0].stats.health, 0);
+});
+
+test("a combat hit reports only health actually lost, including overkill", () => {
+  const { monster, combat } = duel({ monsterHealth: 1 });
+  combat.queueImpact(heroHit());
+
+  const result = combat.resolve();
+
+  assert.equal(monster.stats.health, 0);
+  assert.equal(result.impacts[0].damage, 2);
+  assert.deepEqual(result.healthLosses, [{
+    at: 5,
+    attacker: { type: "player" },
+    target: { type: "entity", id: monster.id },
+    amount: 1,
+  }]);
+  assert.deepEqual(combat.resolve().healthLosses, [], "the death does not emit a second hit");
 });
 
 test("a player kill grants the defeated monster's morale reward", () => {
@@ -211,6 +232,7 @@ test("an entity attack misses after its target leaves the attacked cell", () => 
 
   assert.equal(monster.stats.health, 20);
   assert.equal(result.impacts.length, 0);
+  assert.deepEqual(result.healthLosses, []);
 });
 
 test("a reserved movement cell defines where a moving target can be hit", () => {
@@ -257,6 +279,7 @@ test("a cell attack hits a one-sided moving target that enters its active window
   assert.equal(character.stats.health, 20, "a hit does not create an automatic counterattack");
   assert.equal(strike.hitResolved, true);
   assert.equal(result.impacts.length, 1);
+  assert.deepEqual(result.healthLosses[0].target, { type: "entity", id: monster.id });
 });
 
 test("successful entity hits lightly wear the hero's Attack while misses do not", () => {

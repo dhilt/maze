@@ -161,11 +161,16 @@ function createTestGame({
     innerHTML: "",
     querySelector: () => null,
   };
+  const ctx = createContext();
+  const bloodDraws = [];
+  ctx.fillRect = (...args) => {
+    if (ctx.fillStyle === "#ff4b54") bloodDraws.push(args);
+  };
   const game = createGame({
     canvas: {
       width: 0,
       height: 0,
-      getContext: () => createContext(),
+      getContext: () => ctx,
     },
     statsRoot,
     debugControl: { checked: false },
@@ -196,7 +201,7 @@ function createTestGame({
       phase: EXIT_PHASES.OPEN,
     };
   }
-  return { game, state, outcomes, statsRoot };
+  return { game, state, outcomes, statsRoot, bloodDraws };
 }
 
 test("the game spawns and advances the configured meat monsters", () => {
@@ -273,7 +278,7 @@ test("a player victory starts the portal's own reveal duration", () => {
 
 test("hero and monster contacts in the same frame resolve simultaneously", () => {
   withGameEnvironment((environment) => {
-    const { game, state, outcomes } = createTestGame({
+    const { game, state, outcomes, bloodDraws } = createTestGame({
       speed: 2.5,
       health: 2,
       exitX: 4,
@@ -296,6 +301,13 @@ test("hero and monster contacts in the same frame resolve simultaneously", () =>
     assert.equal(state.monsters[0].stats.health, 0);
     assert.equal(corpseCell.objects[0].kind, "corpse");
     assert.equal(corpseCell.objects[0].entityId, monster.id);
+    assert.ok(bloodDraws.length > 0, "actual injuries create a visible effect");
+    const drawnOnHit = bloodDraws.length;
+    assert.deepEqual(outcomes, [], "combat death waits for the blood effect");
+    const deathTime = game.getState().gameTime;
+    environment.runFrame(500);
+    assert.equal(game.getState().gameTime, deathTime, "the simulation stays frozen while blood flies");
+    assert.equal(bloodDraws.length, drawnOnHit, "a death render does not replay the hit event");
     assert.deepEqual(outcomes, ["died"]);
   });
 });
@@ -334,7 +346,7 @@ test("the hero consumes a linked corpse with E after spending action time", () =
 
 test("the hero can hit a passing monster without receiving a counterattack", () => {
   withGameEnvironment((environment) => {
-    const { game, state } = createTestGame({
+    const { game, state, bloodDraws } = createTestGame({
       speed: 2.5,
       health: 20,
       exitX: 4,
@@ -363,6 +375,7 @@ test("the hero can hit a passing monster without receiving a counterattack", () 
     assert.equal(monster.stats.health, 18);
     assert.equal(state.character.stats.health, 20);
     assert.equal(monster.attack, null);
+    assert.ok(bloodDraws.length > 0, "a one-sided hit is visible");
     assert.deepEqual([monster.move.dx, monster.move.dy], [-1, 0]);
     game.stop();
   });
@@ -479,6 +492,39 @@ test("a portal advances the level while only the final portal finishes the run",
     assert.ok(completed.gameTime > timeBeforeFinalPortal);
     assert.equal(completed.level.isComplete, true);
     assert.equal(completed.level.progress, 1);
+  });
+});
+
+test("a new world does not inherit the previous world's hit effects", () => {
+  withGameEnvironment((environment) => {
+    const { game, state, bloodDraws } = createTestGame({
+      speed: 2.5,
+      health: 20,
+      exitX: 2,
+      monsterCount: 1,
+      levels: [
+        { number: 1, width: 5, height: 1, monsterCount: 1 },
+        { number: 2, width: 5, height: 1, monsterCount: 0 },
+      ],
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = 3;
+    monster.row = 0;
+    monster.stats.health = 2;
+    monster.stats.defense = 5;
+    monster.stats.attack = 0;
+
+    environment.target.dispatchEvent(keyEvent("keydown", "Space"));
+    game.start();
+    environment.runFrame();
+    assert.equal(game.getState().level.number, 2);
+    assert.ok(bloodDraws.length > 0);
+
+    const previousDraws = bloodDraws.length;
+    environment.runFrame(200);
+    assert.equal(bloodDraws.length, previousDraws, "old blood must not appear on the next level");
+    game.stop();
   });
 });
 

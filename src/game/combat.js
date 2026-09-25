@@ -79,7 +79,7 @@ export function createCombat({
     queued.push({ at, attacker, targetCell, strike });
   }
 
-  function resolveGroup(events, impacts, playerDefeats) {
+  function resolveGroup(events, impacts, healthLosses, playerDefeats) {
     const pending = [];
 
     for (const event of events) {
@@ -128,6 +128,7 @@ export function createCombat({
         target: hit.target,
         damage: 0,
         playerHitAt: null,
+        firstHit: hit,
       };
       total.damage += hit.damage;
       if (hit.event.attacker.type === "player" && hit.damage > 0) {
@@ -143,10 +144,19 @@ export function createCombat({
     }
 
     let playerDamage = 0;
-    for (const { target, damage, playerHitAt } of totals.values()) {
+    for (const { target, damage, playerHitAt, firstHit } of totals.values()) {
       const before = target.stats.health;
       target.stats.health = Math.max(0, before - damage);
-      if (target.ref.type === "player") playerDamage += before - target.stats.health;
+      const lost = before - target.stats.health;
+      if (lost > 0) {
+        healthLosses.push({
+          at: firstHit.event.at,
+          attacker: firstHit.event.attacker,
+          target: target.ref,
+          amount: lost,
+        });
+      }
+      if (target.ref.type === "player") playerDamage += lost;
       else if (before > 0 && target.stats.health === 0 && playerHitAt !== null) {
         playerDefeats.set(target.key, playerHitAt);
       }
@@ -170,6 +180,7 @@ export function createCombat({
     const events = queued.sort((left, right) => left.at - right.at);
     queued = [];
     const impacts = [];
+    const healthLosses = [];
     const playerDefeats = new Map();
     let playerDamage = 0;
 
@@ -179,7 +190,7 @@ export function createCombat({
         end < events.length &&
         Math.abs(events[end].at - events[start].at) <= SAME_TIME_EPSILON
       ) end += 1;
-      playerDamage += resolveGroup(events.slice(start, end), impacts, playerDefeats);
+      playerDamage += resolveGroup(events.slice(start, end), impacts, healthLosses, playerDefeats);
       start = end;
     }
 
@@ -207,7 +218,7 @@ export function createCombat({
     const deadMonsterIds = deathEvents.map(({ monster }) => monster.id);
     if (playerDamage > 0) onPlayerDamage?.(playerDamage);
 
-    return { impacts, deadMonsterIds, playerDamage };
+    return { impacts, healthLosses, deadMonsterIds, playerDamage };
   }
 
   return { queueImpact, resolve };

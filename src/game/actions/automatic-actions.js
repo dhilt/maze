@@ -1,8 +1,10 @@
-import { ACTION, directionToAdjacent } from "./intent.js";
+import { hasWall } from "../../world/maze.js";
+import { ACTION, DIRS, directionToAdjacent } from "./intent.js";
 
-// Chooses an intent only when the scheduler has no player command to run.
-// A fresh threat takes precedence over the passive attack on the front cell.
-export function createAutoCombat({ player, monsters }) {
+// Chooses an intent only when the scheduler has no newer player command.
+// A manual face can lead to one immediate directional intent; otherwise a fresh
+// attacker takes precedence over the passive attack on the front cell.
+export function createAutomaticActions({ world, player, monsters }) {
   let attackerId = null;
 
   function adjacentMonster(id) {
@@ -11,6 +13,16 @@ export function createAutoCombat({ player, monsters }) {
       monster.stats.health > 0 &&
       directionToAdjacent(player, monster) !== null
     )) ?? null;
+  }
+
+  function hasFacingThreat() {
+    return monsters.some((monster) => {
+      if (monster.stats.health <= 0) return false;
+      const direction = directionToAdjacent(monster, player);
+      if (direction === null || monster.facing !== direction) return false;
+      const { dx, dy } = DIRS[direction];
+      return !hasWall(world, monster.col, monster.row, dx, dy);
+    });
   }
 
   function onAttackStart({ monsterId }) {
@@ -30,7 +42,10 @@ export function createAutoCombat({ player, monsters }) {
     attackerId = null;
   }
 
-  function nextIntent() {
+  function nextIntent({ afterManualFace = null, allowCombat = true } = {}) {
+    if (afterManualFace !== null && hasFacingThreat()) return afterManualFace;
+    if (!allowCombat) return null;
+
     const attacker = adjacentMonster(attackerId);
     attackerId = attacker?.id ?? null;
     if (attacker !== null) {

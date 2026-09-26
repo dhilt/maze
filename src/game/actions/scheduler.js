@@ -8,8 +8,9 @@ import { ACTION } from "./intent.js";
 // The active action is never interrupted. Each new manual press replaces the
 // not-yet-started action; if several presses arrive together, the first starts
 // and the last is buffered. Equal directions can still mean face + step.
-// Held input and automatic combat refill only an empty queue.
-// An automatic intent is considered only when no player control is pending.
+// A completed manual face offers one immediate automatic choice; the world is
+// checked then, not when the key was pressed. Held input otherwise refills an
+// empty queue, and ambient combat waits while player control is pending.
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
 export function createActionScheduler({
@@ -33,16 +34,22 @@ export function createActionScheduler({
     [ACTION.eat]: consume,
   };
 
+  function queueEntry(desired, manual = false) {
+    return { desired, manual };
+  }
+
   function queueManual(pressed) {
     if (pressed.length === 0) return;
     if (running) {
-      queue[1] = pressed[pressed.length - 1];
+      queue[1] = queueEntry(pressed[pressed.length - 1], true);
       return;
     }
     // An old head may still be waiting after onStep stopped the previous frame.
     queue.length = 0;
-    queue.push(pressed[0]);
-    if (pressed.length > 1) queue.push(pressed[pressed.length - 1]);
+    queue.push(queueEntry(pressed[0], true));
+    if (pressed.length > 1) {
+      queue.push(queueEntry(pressed[pressed.length - 1], true));
+    }
   }
 
   function executorFor(kind) {
@@ -54,12 +61,13 @@ export function createActionScheduler({
   // Resolve queue[0] and start it. Returns false if the adapter cancelled it
   // (dropped) so the caller can try the next head.
   function startHead() {
-    const resolved = adapter.adapt(queue[0]);
+    const resolved = adapter.adapt(queue[0].desired);
     if (resolved === null) {
       queue.shift();
       running = null;
       return false;
     }
+    queue[0].resolvedKind = resolved.kind;
     running = executorFor(resolved.kind);
     running.begin(resolved);
     return true;
@@ -81,13 +89,13 @@ export function createActionScheduler({
           if (!heldTried) {
             const held = input.heldAction(realTimestamp);
             heldTried = true;
-            if (held !== null) queue.push(held);
+            if (held !== null) queue.push(queueEntry(held));
           }
           if (queue.length === 0) {
             if (!automatic || autoTried || input.hasHeldControl()) break;
             const intent = automatic.nextIntent();
             if (intent === null || intent === undefined) break;
-            queue.push(intent);
+            queue.push(queueEntry(intent));
             autoTried = true;
           }
         }
@@ -97,7 +105,7 @@ export function createActionScheduler({
       const leftover = running.update(budget, elapsed);
       if (running.active) break; // still running this frame
 
-      queue.shift();
+      const completed = queue.shift();
       running = null;
       // Check for a terminal condition (e.g. the exit reached) the instant the
       // action lands — before leftover time can carry into the next action and
@@ -112,7 +120,18 @@ export function createActionScheduler({
       if (consumed > 0) {
         heldTried = false;
         autoTried = false;
-      } else if (queue.length === 0) break;
+      }
+      if (completed.manual && completed.resolvedKind === ACTION.face && queue.length === 0 && automatic) {
+        // This is a one-shot opportunity: a newer manual command wins, and an
+        // automatic face never becomes a retreat command.
+        const intent = automatic.nextIntent({
+          afterManualFace: completed.desired,
+          allowCombat: !input.hasHeldControl(),
+        });
+        if (intent !== null && intent !== undefined) queue.push(queueEntry(intent));
+        autoTried = true;
+      }
+      if (consumed === 0 && queue.length === 0) break;
     }
   }
 
@@ -123,7 +142,7 @@ export function createActionScheduler({
     get attackState() { return attack.state; },
     get consumeState() { return consume?.state ?? null; },
     getPixelPosition() { return movement.getPixelPosition(); },
-    get activeId() { return running ? queue[0] : null; },
-    get buffered() { return queue.length > 1 ? queue[1] : null; },
+    get activeId() { return running ? queue[0].desired : null; },
+    get buffered() { return queue.length > 1 ? queue[1].desired : null; },
   };
 }

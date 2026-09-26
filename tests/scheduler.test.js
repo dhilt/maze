@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createActionScheduler } from "../src/game/actions/scheduler.js";
 import { createActionAdapter } from "../src/game/actions/adapter.js";
-import { createAutoCombat } from "../src/game/actions/auto-combat.js";
+import { createAutomaticActions } from "../src/game/actions/automatic-actions.js";
 import { createMovement } from "../src/game/actions/movement.js";
 import { generateWorld } from "../src/world/world.js";
 
@@ -53,6 +53,26 @@ const eatOf = () => ({ kind: "eat", timeCost: 10 });
 
 function resolveByKind(map) {
   return (id) => (id in map ? map[id]() : stepOf(id));
+}
+
+function makeFacingAdapter(initialFacing = "down", occupiedDirection = null) {
+  let facing = initialFacing;
+  return makeAdapter((id) => {
+    if (id === "attack") return attackOf();
+    if (id !== facing) {
+      facing = id;
+      return turnOf(id);
+    }
+    return id === occupiedDirection ? attackOf() : stepOf(id);
+  });
+}
+
+function makeRetreatChoice(isThreat) {
+  return {
+    nextIntent({ afterManualFace } = {}) {
+      return afterManualFace && isThreat() ? afterManualFace : null;
+    },
+  };
 }
 
 test("declared actions run in the order pressed", () => {
@@ -213,6 +233,257 @@ test("the first press starts and the last press waits when several arrive in one
   assert.equal(scheduler.buffered, "left");
 });
 
+test("a combat tap waits for an active attack and retreats if threatened after its face", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  let adjacent = false;
+  let autoCalls = 0;
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement,
+    attack,
+    input,
+    automatic: {
+      nextIntent({ afterManualFace } = {}) {
+        if (afterManualFace) return adjacent ? afterManualFace : null;
+        return autoCalls++ === 0 ? "attack" : null;
+      },
+      onManualIntent() {},
+    },
+  });
+
+  scheduler.update(1); // automatic attack starts
+  input.queue("right");
+  scheduler.update(1); // the attack continues; the tap is pending
+  assert.equal(scheduler.activeId, "attack");
+  assert.equal(scheduler.buffered, "right");
+
+  adjacent = true;
+  scheduler.update(3); // attack finishes; face starts with no leftover time
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face"]);
+  scheduler.update(1); // face finishes; the live threat starts a step immediately
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face", "step"]);
+  assert.equal(scheduler.move.elapsed, 0);
+  assert.equal(attack.log.length, 1);
+});
+
+test("a threat that leaves during a manual face does not trigger a stale retreat", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  let adjacent = true;
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement,
+    attack: makeExecutor(),
+    input,
+    automatic: makeRetreatChoice(() => adjacent),
+  });
+
+  input.queue("right");
+  scheduler.update(0.25);
+  adjacent = false;
+  scheduler.update(0.75);
+
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face"]);
+  assert.equal(scheduler.activeId, null);
+});
+
+test("a second short direction is re-evaluated after the first retreat lands", () => {
+  for (const newThreat of [false, true]) {
+    const world = generateWorld({ width: 4, height: 4, seed: 1 });
+    const player = { col: 1, row: 1, facing: "right" };
+    const monster = { id: "m1", col: 2, row: 1, facing: "left", stats: { health: 10 } };
+    const input = makeInput();
+    const scheduler = createActionScheduler({
+      adapter: createActionAdapter({
+        world,
+        player,
+        character: { actionCosts: { face: 1, step: 5, attack: 5 } },
+        findEntryBlocker: () => null,
+        findEntityById: (id) => id === monster.id ? monster : null,
+      }),
+      movement: createMovement({ player, cellSize: 16 }),
+      attack: makeExecutor(),
+      input,
+      automatic: createAutomaticActions({ world, player, monsters: [monster] }),
+    });
+
+    input.queue("down");
+    scheduler.update(1); // manual face ends; first retreat step begins
+    assert.equal(scheduler.move?.kind, "step");
+    input.queue("left");
+    scheduler.update(1); // second short press waits for the active step
+    scheduler.update(4); // first step lands; second manual face begins
+    assert.deepEqual({ col: player.col, row: player.row }, { col: 1, row: 2 });
+
+    if (newThreat) {
+      monster.row = 2; // a fresh face-to-face encounter in the new cell
+    }
+    scheduler.update(1); // second face ends; choose from the live positions
+    assert.equal(player.facing, "left");
+    assert.equal(scheduler.move?.kind ?? null, newThreat ? "step" : null);
+  }
+});
+
+test("an automatic face does not trigger the manual retreat continuation", () => {
+  const movement = makeExecutor();
+  const choices = [];
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement,
+    attack: makeExecutor(),
+    input: makeInput(),
+    automatic: {
+      nextIntent(context) {
+        choices.push(context);
+        return choices.length === 1 ? "right" : null;
+      },
+    },
+  });
+
+  scheduler.update(1);
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face"]);
+  assert.deepEqual(choices, [undefined, undefined]);
+  assert.equal(scheduler.activeId, null);
+});
+
+test("a newer manual press during a combat turn suppresses its continuation", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  let adjacent = true;
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement,
+    attack: makeExecutor(),
+    input,
+    automatic: makeRetreatChoice(() => adjacent),
+  });
+
+  input.queue("right");
+  scheduler.update(0.25);
+  input.queue("left");
+  scheduler.update(0.75);
+  assert.equal(scheduler.activeId, "left");
+  assert.deepEqual(movement.log.map(({ facing }) => facing), ["right", "left"]);
+
+  adjacent = false;
+  scheduler.update(1);
+  assert.equal(scheduler.activeId, null);
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face", "face"]);
+});
+
+test("a newer manual press replaces a committed direction before its turn starts", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  let adjacent = true;
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement,
+    attack: makeExecutor(),
+    input,
+    automatic: makeRetreatChoice(() => adjacent),
+  });
+
+  input.queue("attack");
+  scheduler.update(1);
+  input.queue("right");
+  scheduler.update(1);
+  adjacent = false;
+  input.queue("left");
+  scheduler.update(1);
+  scheduler.update(2);
+
+  assert.equal(scheduler.activeId, "left");
+  assert.deepEqual(movement.log.map(({ facing }) => facing), ["left"]);
+  scheduler.update(1);
+  assert.equal(scheduler.activeId, null);
+});
+
+test("a combat turn attacks when its re-resolved direction is occupied", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter("down", "right"),
+    movement,
+    attack,
+    input,
+    automatic: makeRetreatChoice(() => true),
+  });
+
+  input.queue("right");
+  scheduler.update(1);
+
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face"]);
+  assert.deepEqual(attack.log.map(({ kind }) => kind), ["attack"]);
+  assert.equal(scheduler.activeId, "right");
+});
+
+test("a combat tap already facing its direction does not schedule a second action", () => {
+  for (const { occupied, kind } of [
+    { occupied: null, kind: "step" },
+    { occupied: "right", kind: "attack" },
+  ]) {
+    const movement = makeExecutor();
+    const attack = makeExecutor();
+    const input = makeInput();
+    const scheduler = createActionScheduler({
+      adapter: makeFacingAdapter("right", occupied),
+      movement,
+      attack,
+      input,
+      automatic: makeRetreatChoice(() => true),
+    });
+
+    input.queue("right");
+    scheduler.update(5);
+    assert.deepEqual([...movement.log, ...attack.log].map((action) => action.kind), [kind]);
+    assert.equal(scheduler.activeId, null);
+  }
+});
+
+test("a combat turn does not continue past a terminal condition or blocked route", () => {
+  for (const terminal of [false, true]) {
+    const movement = makeExecutor();
+    const input = makeInput();
+    let adaptations = 0;
+    const scheduler = createActionScheduler({
+      adapter: makeAdapter(() => (++adaptations === 1 ? turnOf("right") : null)),
+      movement,
+      attack: makeExecutor(),
+      input,
+      automatic: makeRetreatChoice(() => true),
+      onStep: () => terminal,
+    });
+
+    input.queue("right");
+    scheduler.update(1);
+    assert.equal(scheduler.activeId, null);
+    assert.equal(adaptations, terminal ? 1 : 2);
+    assert.deepEqual(movement.log.map(({ kind }) => kind), ["face"]);
+  }
+});
+
+test("holding a combat direction repeats only after its committed step", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  input._held = "right";
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement,
+    attack: makeExecutor(),
+    input,
+    automatic: makeRetreatChoice(() => true),
+  });
+
+  input.queue("right");
+  scheduler.update(1);
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face", "step"]);
+  scheduler.update(5);
+  assert.deepEqual(movement.log.map(({ kind }) => kind), ["face", "step", "step"]);
+});
+
 test("one repeated attack can be buffered for a durable target", () => {
   const movement = makeExecutor();
   const attack = makeExecutor();
@@ -308,7 +579,7 @@ test("an automatic side reaction turns, then starts its strike with leftover tim
   const world = generateWorld({ width: 3, height: 3, seed: 1 });
   const player = { col: 1, row: 1, facing: "right" };
   const monster = { id: "side", col: 1, row: 0, stats: { health: 10 } };
-  const auto = createAutoCombat({ player, monsters: [monster] });
+  const auto = createAutomaticActions({ world, player, monsters: [monster] });
   const attack = makeExecutor();
   const scheduler = createActionScheduler({
     adapter: createActionAdapter({

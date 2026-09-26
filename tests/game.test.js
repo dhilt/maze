@@ -398,6 +398,77 @@ test("a manual turn buffered during automatic attack runs before another auto at
   });
 });
 
+test("a released direction tap retreats after the current automatic attack", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 10,
+      health: 20,
+      exitX: 0,
+      exitY: 0,
+      worldRows: 3,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col + 1;
+    monster.row = state.player.row;
+    monster.facing = "left";
+    monster.stats.health = 1000;
+    monster.attack = {
+      kind: "attack",
+      timeCost: 1000,
+      elapsed: 0,
+      targetCell: { col: state.player.col, row: state.player.row },
+      hitResolved: false,
+    };
+
+    game.start();
+    environment.runFrame(); // the hero's automatic attack starts
+    assert.equal(game.getState().attack?.kind, "attack");
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowDown"));
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowDown"));
+
+    environment.runFrame();
+    assert.equal(state.player.facing, "down");
+    assert.equal(game.getState().move?.kind, "step");
+    environment.runFrame();
+    assert.equal(state.player.row, 2, "one tap leaves the line of attack");
+    game.stop();
+  });
+});
+
+test("a released direction tap beside a passing monster only turns", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 10,
+      health: 20,
+      exitX: 0,
+      exitY: 0,
+      worldRows: 3,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col + 1;
+    monster.row = state.player.row;
+    monster.facing = "up";
+    monster.stats.health = 1000;
+    monster.move = { kind: "step", dx: 0, dy: -1, facing: "up", timeCost: 1000, elapsed: 0 };
+
+    game.start();
+    environment.runFrame();
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowDown"));
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowDown"));
+    environment.runFrame();
+    environment.runFrame();
+
+    assert.equal(state.player.facing, "down");
+    assert.equal(state.player.row, 1, "a passing monster must not commit a retreat step");
+    assert.equal(game.getState().move, null);
+    game.stop();
+  });
+});
+
 test("a short manual turn is not undone by an earlier automatic reaction", () => {
   withGameEnvironment((environment) => {
     const { game, state } = createTestGame({

@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createActionScheduler } from "../src/game/actions/scheduler.js";
+import { createActionAdapter } from "../src/game/actions/adapter.js";
+import { createAutoCombat } from "../src/game/actions/auto-combat.js";
+import { createMovement } from "../src/game/actions/movement.js";
+import { generateWorld } from "../src/world/world.js";
 
 // A timer-based fake executor (matches the real begin/update contract), so
 // logical time-cost and leftover-unit behavior are exercised here too.
@@ -33,9 +37,11 @@ function makeInput() {
   const presses = [];
   return {
     _held: null,
+    _pendingHeld: false,
     queue(...ids) { presses.push(...ids); },
     drainPressed() { const out = presses.slice(); presses.length = 0; return out; },
     heldAction() { return this._held; },
+    hasHeldControl() { return this._held !== null || this._pendingHeld; },
   };
 }
 
@@ -115,7 +121,7 @@ test("the adapter can cancel a declared action (dropped from the queue)", () => 
   assert.equal(scheduler.move.elapsed, 1); // cancellation consumed no budget
 });
 
-test("FIFO keeps the first next action; overflow is dropped", () => {
+test("the latest manual press replaces the pending action without interrupting the active one", () => {
   const movement = makeExecutor();
   const attack = makeExecutor();
   const input = makeInput();
@@ -127,12 +133,14 @@ test("FIFO keeps the first next action; overflow is dropped", () => {
   input.queue("up");
   scheduler.update(0.5); // up buffered
   input.queue("attack");
-  scheduler.update(0.5); // queue full → attack dropped
-  assert.equal(scheduler.buffered, "up");
+  scheduler.update(0.5); // attack replaces up
+  assert.equal(scheduler.activeId, "right");
+  assert.equal(scheduler.buffered, "attack");
 
-  scheduler.update(3.5); // right completes → up runs
-  assert.equal(scheduler.activeId, "up");
-  assert.equal(attack.log.length, 0);
+  scheduler.update(3.5); // right completes → attack runs
+  assert.equal(scheduler.activeId, "attack");
+  assert.equal(attack.log.length, 1);
+  assert.deepEqual(movement.log.map((a) => a.facing), ["right"]);
 });
 
 test("an explicit consume replaces a full buffered slot without interrupting the active action", () => {
@@ -160,6 +168,49 @@ test("an explicit consume replaces a full buffered slot without interrupting the
   scheduler.update(4);
   assert.equal(scheduler.activeId, "eat");
   assert.equal(consume.log.length, 1);
+});
+
+test("a direction can replace a pending consume action", () => {
+  const movement = makeExecutor();
+  const consume = makeExecutor();
+  const input = makeInput();
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ eat: eatOf })),
+    movement,
+    attack: makeExecutor(),
+    consume,
+    input,
+  });
+
+  input.queue("right");
+  scheduler.update(1);
+  input.queue("eat");
+  scheduler.update(1);
+  input.queue("left");
+  scheduler.update(1);
+
+  assert.equal(scheduler.activeId, "right");
+  assert.equal(scheduler.buffered, "left");
+  scheduler.update(2);
+  assert.equal(scheduler.activeId, "left");
+  assert.equal(consume.log.length, 0);
+});
+
+test("the first press starts and the last press waits when several arrive in one frame", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({})),
+    movement,
+    attack: makeExecutor(),
+    input,
+  });
+
+  input.queue("right", "up", "left");
+  scheduler.update(1);
+
+  assert.equal(scheduler.activeId, "right");
+  assert.equal(scheduler.buffered, "left");
 });
 
 test("one repeated attack can be buffered for a durable target", () => {
@@ -193,6 +244,118 @@ test("a cancelled held direction is adapted once per frame, not spun", () => {
   scheduler.update(1);
   assert.equal(calls, 1); // was 16 (guard limit) before the fix
   assert.equal(scheduler.activeId, null);
+});
+
+test("automatic intent runs only after manual and held input", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  let automaticCalls = 0;
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ attack: attackOf })),
+    movement,
+    attack,
+    input,
+    automatic: { nextIntent: () => { automaticCalls += 1; return "attack"; } },
+  });
+
+  input.queue("right");
+  scheduler.update(1);
+  assert.equal(automaticCalls, 0);
+  input._held = "right";
+  scheduler.update(4);
+  assert.equal(automaticCalls, 0);
+  input._held = null;
+  scheduler.update(5);
+  assert.equal(attack.log.length, 1);
+  assert.equal(automaticCalls, 1);
+});
+
+test("a pending direction hold suppresses automatic intent before repeat starts", () => {
+  const input = makeInput();
+  input._pendingHeld = true;
+  let automaticCalls = 0;
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ attack: attackOf })),
+    movement: makeExecutor(),
+    attack: makeExecutor(),
+    input,
+    automatic: { nextIntent: () => { automaticCalls += 1; return "attack"; } },
+  });
+
+  scheduler.update(1);
+  assert.equal(automaticCalls, 0);
+  assert.equal(scheduler.activeId, null);
+});
+
+test("a cancelled automatic intent is adapted only once per frame", () => {
+  const input = makeInput();
+  let calls = 0;
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(() => { calls += 1; return null; }),
+    movement: makeExecutor(),
+    attack: makeExecutor(),
+    input,
+    automatic: { nextIntent: () => ({ kind: "auto-attack", targetId: "monster" }) },
+  });
+
+  scheduler.update(1);
+  assert.equal(calls, 1);
+  assert.equal(scheduler.activeId, null);
+});
+
+test("an automatic side reaction turns, then starts its strike with leftover time", () => {
+  const world = generateWorld({ width: 3, height: 3, seed: 1 });
+  const player = { col: 1, row: 1, facing: "right" };
+  const monster = { id: "side", col: 1, row: 0, stats: { health: 10 } };
+  const auto = createAutoCombat({ player, monsters: [monster] });
+  const attack = makeExecutor();
+  const scheduler = createActionScheduler({
+    adapter: createActionAdapter({
+      world,
+      player,
+      character: { actionCosts: { face: 1, attack: 5 } },
+      findEntryBlocker: () => null,
+      findEntityById: (id) => id === monster.id ? monster : null,
+    }),
+    movement: createMovement({ player, cellSize: 16 }),
+    attack,
+    input: makeInput(),
+    automatic: auto,
+  });
+  auto.onAttackStart({ monsterId: monster.id });
+
+  scheduler.update(1.25);
+
+  assert.equal(player.facing, "up");
+  assert.equal(attack.log.length, 1);
+  assert.equal(attack.state.elapsed, 0.25);
+});
+
+test("a manual press buffered during automatic attack runs before another automatic strike", () => {
+  const movement = makeExecutor();
+  const attack = makeExecutor();
+  const input = makeInput();
+  let autoCalls = 0;
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({ attack: attackOf })),
+    movement,
+    attack,
+    input,
+    automatic: {
+      nextIntent: () => { autoCalls += 1; return "attack"; },
+      onManualIntent() {},
+    },
+  });
+
+  scheduler.update(1);
+  input.queue("up");
+  scheduler.update(4);
+
+  assert.equal(scheduler.activeId, "up");
+  assert.equal(movement.log.length, 1);
+  assert.equal(attack.log.length, 1);
+  assert.equal(autoCalls, 1);
 });
 
 test("an unknown resolved kind throws instead of silently moving", () => {
@@ -289,4 +452,25 @@ test("onStep halts the loop the instant a step lands (no time-carry overshoot)",
 
   assert.equal(runSteps(null), 2); // no hook → leftover carries, both steps run
   assert.equal(runSteps(() => true), 1); // hook halts right after the first lands
+});
+
+test("a manual press replaces an unstarted action left after onStep halts the frame", () => {
+  const movement = makeExecutor();
+  const input = makeInput();
+  const scheduler = createActionScheduler({
+    adapter: makeAdapter(resolveByKind({})),
+    movement,
+    attack: makeExecutor(),
+    input,
+    onStep: () => true,
+  });
+
+  input.queue("right", "up");
+  scheduler.update(5);
+  assert.equal(scheduler.activeId, null);
+  input.queue("left");
+  scheduler.update(1);
+
+  assert.equal(scheduler.activeId, "left");
+  assert.deepEqual(movement.log.map((a) => a.facing), ["right", "left"]);
 });

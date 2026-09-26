@@ -105,6 +105,7 @@ function withGameEnvironment(run) {
   let nextFrame = null;
   let schedules = 0;
   let cancels = 0;
+  let frameNow = null;
 
   globalThis.window = target;
   globalThis.requestAnimationFrame = (callback) => {
@@ -119,7 +120,8 @@ function withGameEnvironment(run) {
       target,
       runFrame(deltaMs = 100) {
         assert.equal(typeof nextFrame, "function");
-        nextFrame(performance.now() + deltaMs);
+        frameNow = (frameNow ?? performance.now()) + deltaMs;
+        nextFrame(frameNow);
       },
       get schedules() { return schedules; },
       get cancels() { return cancels; },
@@ -312,6 +314,118 @@ test("hero and monster contacts in the same frame resolve simultaneously", () =>
   });
 });
 
+test("the hero attacks a front neighbour without pressing Space", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 1,
+      health: 20,
+      exitX: 0,
+      worldRows: 3,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col + 1;
+    monster.row = state.player.row;
+    monster.facing = "left";
+    monster.stats.health = 30;
+
+    game.start();
+    environment.runFrame();
+    assert.equal(game.getState().attack?.kind, "attack");
+    environment.runFrame();
+    environment.runFrame();
+    assert.ok(monster.stats.health < 30);
+    game.stop();
+  });
+});
+
+test("a side attack starts the hero's turn and counterattack before any hit", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 1.1,
+      health: 20,
+      exitX: 0,
+      worldRows: 3,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col;
+    monster.row = state.player.row - 1;
+    monster.facing = "down";
+
+    game.start();
+    environment.runFrame();
+    assert.equal(state.player.facing, "right");
+    assert.equal(game.getState().attack, null);
+    assert.equal(monster.attack?.kind, "attack");
+    assert.equal(state.character.stats.health, 20);
+
+    environment.runFrame();
+    assert.equal(state.player.facing, "up");
+    assert.equal(game.getState().attack?.kind, "attack");
+    assert.equal(state.character.stats.health, 20, "the reaction precedes contact");
+    game.stop();
+  });
+});
+
+test("a manual turn buffered during automatic attack runs before another auto attack", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 1,
+      health: 20,
+      exitX: 0,
+      worldRows: 3,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col + 1;
+    monster.row = state.player.row;
+    monster.facing = "left";
+    monster.stats.health = 30;
+
+    game.start();
+    environment.runFrame();
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowUp"));
+    for (let frame = 0; frame < 5; frame += 1) environment.runFrame();
+
+    assert.equal(state.player.facing, "up");
+    assert.equal(game.getState().attack, null);
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowUp"));
+    game.stop();
+  });
+});
+
+test("a short manual turn is not undone by an earlier automatic reaction", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 1.1,
+      health: 20,
+      exitX: 0,
+      worldRows: 3,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    state.player.facing = "right";
+    monster.col = state.player.col;
+    monster.row = state.player.row - 1;
+    monster.facing = "down";
+
+    game.start();
+    environment.runFrame(); // a new monster attack records a pending reaction
+    environment.target.dispatchEvent(keyEvent("keydown", "ArrowDown"));
+    environment.target.dispatchEvent(keyEvent("keyup", "ArrowDown"));
+    environment.runFrame();
+    environment.runFrame();
+
+    assert.equal(state.player.facing, "down");
+    assert.equal(game.getState().attack, null);
+    game.stop();
+  });
+});
+
 test("the hero consumes a linked corpse with E after spending action time", () => {
   withGameEnvironment((environment) => {
     const { game, state } = createTestGame({
@@ -362,7 +476,7 @@ test("the hero can hit a passing monster without receiving a counterattack", () 
       kind: "step",
       dx: -1,
       dy: 0,
-      elapsed: 0,
+      elapsed: 2.1,
       timeCost: monster.actionCosts.step,
       facing: "left",
     };

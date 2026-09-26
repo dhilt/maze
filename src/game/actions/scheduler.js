@@ -1,16 +1,15 @@
 import { ACTION } from "./intent.js";
 
-// Drives the character through a FIFO queue (max 2) of DESIRED actions. Right
+// Drives the character through a two-slot queue of desired intents. Right
 // before an action runs it goes through the adapter, which resolves it against
 // the live world into a concrete action — possibly transformed (blocked move →
 // face) or cancelled (dropped from the queue).
 //
-// Queue rules: run in order pressed; cap 2 (overflow dropped). Directions may
-// repeat so a fast double press can mean face + step. An explicit interaction
-// replaces the buffered action when necessary, but never interrupts the action
-// already in progress. A discrete attack may buffer another attack so repeated
-// strikes do not require frame-perfect input. When idle & empty, a confirmed
-// held direction or attack refills it (auto-repeat).
+// The active action is never interrupted. Each new manual press replaces the
+// not-yet-started action; if several presses arrive together, the first starts
+// and the last is buffered. Equal directions can still mean face + step.
+// Held input and automatic combat refill only an empty queue.
+// An automatic intent is considered only when no player control is pending.
 // Zero-cost actions flush within the same frame; leftover game-time units carry
 // into the next action to keep motion smooth.
 export function createActionScheduler({
@@ -19,9 +18,10 @@ export function createActionScheduler({
   attack,
   consume,
   input,
+  automatic,
   onStep,
 }) {
-  const queue = []; // desired action ids, in order
+  const queue = []; // active intent and at most one pending intent
   let running = null; // the executor advancing queue[0], or null
 
   // Registry of executors by resolved-action kind. Adding an action kind means
@@ -33,16 +33,16 @@ export function createActionScheduler({
     [ACTION.eat]: consume,
   };
 
-  function enqueue(id) {
-    if (queue.length >= 2) {
-      // A one-shot interaction must not disappear behind auto-repeated combat
-      // or movement. Keep the active head and replace only its successor.
-      if (id === ACTION.eat) queue[1] = id;
+  function queueManual(pressed) {
+    if (pressed.length === 0) return;
+    if (running) {
+      queue[1] = pressed[pressed.length - 1];
       return;
     }
-    const last = queue.length ? queue[queue.length - 1] : null;
-    if (id === ACTION.eat && last === ACTION.eat) return;
-    queue.push(id);
+    // An old head may still be waiting after onStep stopped the previous frame.
+    queue.length = 0;
+    queue.push(pressed[0]);
+    if (pressed.length > 1) queue.push(pressed[pressed.length - 1]);
   }
 
   function executorFor(kind) {
@@ -66,20 +66,30 @@ export function createActionScheduler({
   }
 
   function update(deltaUnits, realTimestamp) {
-    for (const id of input.drainPressed()) enqueue(id);
+    const pressed = input.drainPressed();
+    if (pressed.length > 0) automatic?.onManualIntent?.();
+    queueManual(pressed);
 
     let budget = deltaUnits;
     let elapsed = 0;
     let heldTried = false; // auto-repeat pulls a held action at most once/frame
+    let autoTried = false; // a cancelled automatic intent cannot spin this frame
     let guard = 0;
     while (guard++ < 16) {
       if (!running) {
         if (queue.length === 0) {
-          if (heldTried) break; // already resolved the held action this frame
-          const held = input.heldAction(realTimestamp);
-          if (held === null) break;
-          enqueue(held);
-          heldTried = true;
+          if (!heldTried) {
+            const held = input.heldAction(realTimestamp);
+            heldTried = true;
+            if (held !== null) queue.push(held);
+          }
+          if (queue.length === 0) {
+            if (!automatic || autoTried || input.hasHeldControl()) break;
+            const intent = automatic.nextIntent();
+            if (intent === null || intent === undefined) break;
+            queue.push(intent);
+            autoTried = true;
+          }
         }
         if (!startHead()) continue; // cancelled → try the next head
       }
@@ -99,8 +109,10 @@ export function createActionScheduler({
       // A real (time-consuming) action ran: allow one more held refill so held
       // movement and attacks keep flowing. A zero-cost action with an empty
       // queue must stop — otherwise a held action spins the loop each frame.
-      if (consumed > 0) heldTried = false;
-      else if (queue.length === 0) break;
+      if (consumed > 0) {
+        heldTried = false;
+        autoTried = false;
+      } else if (queue.length === 0) break;
     }
   }
 

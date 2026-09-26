@@ -14,7 +14,18 @@ export const ACTION = Object.freeze({
   step: "step",
   attack: "attack",
   eat: "eat",
+  engage: "engage", // target-aware automatic face or attack, never a step
 });
+
+export function directionToAdjacent(from, to) {
+  const dx = to.col - from.col;
+  const dy = to.row - from.row;
+  if (dx === 1 && dy === 0) return "right";
+  if (dx === -1 && dy === 0) return "left";
+  if (dx === 0 && dy === 1) return "down";
+  if (dx === 0 && dy === -1) return "up";
+  return null;
+}
 
 // Desired direction → face, step, attack, or null.
 // towardBlocked: the hero will face a wall; a beast ignores that side.

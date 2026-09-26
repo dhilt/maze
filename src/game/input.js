@@ -34,6 +34,7 @@ export function createKeyboardInput(
 
   function onKeyDown(event) {
     if (event.code === "KeyE") {
+      keys.eat = true;
       if (!event.repeat) pressed.push(ACTION.eat);
       event.preventDefault();
       return;
@@ -58,6 +59,11 @@ export function createKeyboardInput(
   }
 
   function onKeyUp(event) {
+    if (event.code === "KeyE") {
+      keys.eat = false;
+      event.preventDefault();
+      return;
+    }
     if (event.code === "Space") {
       keys.attack = false;
       event.preventDefault();
@@ -76,6 +82,7 @@ export function createKeyboardInput(
       delete pressedAt[action];
     }
     keys.attack = false;
+    keys.eat = false;
     pressed.length = 0;
   }
 
@@ -101,6 +108,10 @@ export function createKeyboardInput(
     return heldFor >= directionHoldDelayMs ? direction : null;
   }
 
+  function hasHeldControl() {
+    return !!(keys.up || keys.down || keys.left || keys.right || keys.attack || keys.eat);
+  }
+
   // Take the discrete presses recorded since the previous call.
   function drainPressed() {
     const out = pressed.slice();
@@ -118,5 +129,5 @@ export function createKeyboardInput(
   target.addEventListener("keyup", onKeyUp);
   target.addEventListener("blur", clear);
 
-  return { heldAction, heldDirection, drainPressed, destroy };
+  return { heldAction, heldDirection, hasHeldControl, drainPressed, destroy };
 }

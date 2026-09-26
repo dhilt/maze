@@ -206,7 +206,8 @@ test("multiple combat deaths are emitted in their impact-time order", () => {
   const late = monsterAt({ id: "late", health: 2 });
   const early = monsterAt({ id: "early", health: 2 });
   late.col = 1;
-  early.col = 2;
+  early.col = 0;
+  early.row = 1;
   const deaths = [];
   const combat = createCombatFixture({
     player,
@@ -216,7 +217,7 @@ test("multiple combat deaths are emitted in their impact-time order", () => {
     onMonsterDeath: ({ monster, at }) => deaths.push([monster.id, at]),
   });
   combat.queueImpact({ ...heroHit(4), targetCell: { col: 1, row: 0 } });
-  combat.queueImpact({ ...heroHit(1), targetCell: { col: 2, row: 0 } });
+  combat.queueImpact({ ...heroHit(1), targetCell: { col: 0, row: 1 } });
 
   combat.resolve();
 
@@ -235,7 +236,7 @@ test("an entity attack misses after its target leaves the attacked cell", () => 
   assert.deepEqual(result.healthLosses, []);
 });
 
-test("a reserved movement cell defines where a moving target can be hit", () => {
+test("a departing target stops being hittable after leaving sword reach", () => {
   const { player, character, monster, monsters } = duel();
   monster.move = { kind: "step", dx: 1, dy: 0, elapsed: 1, timeCost: 5 };
   const combat = createCombatFixture({
@@ -252,7 +253,7 @@ test("a reserved movement cell defines where a moving target can be hit", () => 
   assert.equal(result.impacts.length, 0);
 });
 
-test("a cell attack hits a one-sided moving target that enters its active window", () => {
+test("a one-sided attack hits a moving target only when it comes within reach", () => {
   const { character, monster, combat } = duel();
   const strike = { hitResolved: false };
   monster.col = 2;
@@ -266,7 +267,7 @@ test("a cell attack hits a one-sided moving target that enters its active window
   assert.equal(combat.resolve().impacts.length, 0, "the empty cell is not a locked target");
   assert.equal(strike.hitResolved, false);
 
-  monster.move = { kind: "step", dx: -1, dy: 0, elapsed: 1, timeCost: 5 };
+  monster.move = { kind: "step", dx: -1, dy: 0, elapsed: 4.6, timeCost: 5 };
   combat.queueImpact({
     at: 2.8,
     attacker: { type: "player" },
@@ -280,6 +281,94 @@ test("a cell attack hits a one-sided moving target that enters its active window
   assert.equal(strike.hitResolved, true);
   assert.equal(result.impacts.length, 1);
   assert.deepEqual(result.healthLosses[0].target, { type: "entity", id: monster.id });
+});
+
+test("approaching and retreating targets use visible distance in every direction", () => {
+  const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (const [dx, dy] of directions) {
+    for (const [label, start, step, progress, expected] of [
+      ["distant approach", 2, -1, 0.1, false],
+      ["near approach", 2, -1, 0.95, true],
+      ["near retreat", 1, 1, 0.05, true],
+      ["distant retreat", 1, 1, 0.9, false],
+    ]) {
+      const player = { col: 2, row: 2 };
+      const character = createCharacterFixture();
+      const monster = createMeatMonsterFixture({
+        col: player.col + dx * start,
+        row: player.row + dy * start,
+        move: {
+          kind: "step",
+          dx: dx * step,
+          dy: dy * step,
+          elapsed: progress * 10,
+          timeCost: 10,
+        },
+      });
+      const combat = createCombatFixture({ player, character, monsters: [monster] });
+      combat.queueImpact({
+        attacker: { type: "player" },
+        targetCell: { col: player.col + dx, row: player.row + dy },
+      });
+      assert.equal(combat.resolve().impacts.length > 0, expected, `${label}: ${dx},${dy}`);
+    }
+  }
+});
+
+test("sideways targets can be hit on both sides of the attack axis", () => {
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const sideX = -dy;
+    const sideY = dx;
+    for (const [label, start, step, progress, expected] of [
+      ["early entry", -1, 1, 0.1, false],
+      ["late entry", -1, 1, 0.9, true],
+      ["early exit", 0, 1, 0.1, true],
+      ["late exit", 0, 1, 0.9, false],
+    ]) {
+      const player = { col: 2, row: 2 };
+      const character = createCharacterFixture();
+      const monster = createMeatMonsterFixture({
+        col: player.col + dx + sideX * start,
+        row: player.row + dy + sideY * start,
+        move: {
+          kind: "step",
+          dx: sideX * step,
+          dy: sideY * step,
+          elapsed: progress * 10,
+          timeCost: 10,
+        },
+      });
+      const combat = createCombatFixture({ player, character, monsters: [monster] });
+      combat.queueImpact({
+        attacker: { type: "player" },
+        targetCell: { col: player.col + dx, row: player.row + dy },
+      });
+      assert.equal(combat.resolve().impacts.length > 0, expected, `${label}: ${dx},${dy}`);
+    }
+  }
+});
+
+test("monster attacks use the same continuous reach against a moving hero", () => {
+  const player = { col: 0, row: 0 };
+  const character = createCharacterFixture();
+  const monster = createMeatMonsterFixture({ col: 2, row: 0, facing: "left" });
+  const move = { kind: "step", dx: 1, dy: 0, elapsed: 1, timeCost: 10 };
+  const combat = createCombatFixture({
+    player,
+    character,
+    monsters: [monster],
+    getPlayerMove: () => move,
+  });
+  const event = {
+    attacker: { type: "entity", id: monster.id },
+    targetCell: { col: 1, row: 0 },
+  };
+
+  combat.queueImpact(event);
+  assert.equal(combat.resolve().impacts.length, 0);
+  move.elapsed = 9.5;
+  combat.queueImpact(event);
+  assert.equal(combat.resolve().impacts.length, 1);
 });
 
 test("successful entity hits lightly wear the hero's Attack while misses do not", () => {

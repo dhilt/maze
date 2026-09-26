@@ -140,6 +140,51 @@ test("explicit attack targets the facing cell, not its current occupant", () => 
   assert.deepEqual(attack.targetCell, { col: 2, row: 1 });
 });
 
+test("automatic engagement turns or strikes only a living adjacent target", () => {
+  const world = generateWorld({ width: 4, height: 3, seed: 1 });
+  const player = { col: 1, row: 1, facing: "down" };
+  const target = { id: "monster-1", col: 2, row: 1, stats: { health: 10 } };
+  const adapter = makeAdapter(
+    world,
+    player,
+    () => null,
+    undefined,
+    (id) => id === target.id ? target : null,
+  );
+  const engage = { kind: "engage", targetId: target.id };
+
+  assert.deepEqual(adapter.adapt(engage), {
+    kind: "face", dx: 0, dy: 0, timeCost: COSTS.face, facing: "right",
+  });
+  player.facing = "right";
+  assert.deepEqual(adapter.adapt(engage), {
+    kind: "attack", dx: 0, dy: 0, timeCost: COSTS.attack,
+    facing: null, targetCell: { col: 2, row: 1 },
+  });
+
+  target.col = 3;
+  assert.equal(adapter.adapt(engage), null, "a departed target is not a step or empty attack");
+  target.col = 2;
+  target.stats.health = 0;
+  assert.equal(adapter.adapt(engage), null);
+});
+
+test("automatic engagement never attacks a wall between adjacent cells", () => {
+  const world = generateWorld({ width: 3, height: 3, seed: 1 });
+  world.at(1, 1).wallRight = createWall({ health: 20, defense: 2, impactWear: 1 });
+  const target = { id: "monster-1", col: 2, row: 1, stats: { health: 10 } };
+  const adapter = makeAdapter(
+    world,
+    { col: 1, row: 1, facing: "right" },
+    () => null,
+    undefined,
+    () => target,
+  );
+
+  assert.equal(adapter.adapt({ kind: "engage", targetId: target.id }), null);
+  assert.ok(adapter.adapt("attack").target, "manual wall attack still works");
+});
+
 test("attack facing a stored wall resolves to a wall attack", () => {
   const world = generateWorld({ width: 5, height: 5, seed: 1 });
   world.at(2, 2).wallRight = createWall({ health: 20, defense: 2, impactWear: 1 });

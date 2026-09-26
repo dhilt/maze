@@ -5,6 +5,7 @@ import { createRandom } from "../world/random.js";
 import { generateWorld } from "../world/world.js";
 import { createActionAdapter } from "./actions/adapter.js";
 import { createAttack } from "./actions/attack.js";
+import { createAutoCombat } from "./actions/auto-combat.js";
 import { createConsume } from "./actions/consume.js";
 import { createMovement } from "./actions/movement.js";
 import { createActionScheduler } from "./actions/scheduler.js";
@@ -68,6 +69,7 @@ export function createLevelSession({
     seed: enemySeed,
     idPrefix: `level-${level.number}:meat-monster`,
   });
+  const autoCombat = createAutoCombat({ player, monsters });
   const exitController = createExitController({
     cell: exitCell,
     monsterIds: monsters.map(({ id }) => id),
@@ -98,6 +100,7 @@ export function createLevelSession({
     monsters,
     seed: (enemySeed ^ 0x85ebca6b) >>> 0,
     onImpact: combat.queueImpact,
+    onAttackStart: autoCombat.onAttackStart,
   });
   const attack = createAttack({
     world,
@@ -131,6 +134,7 @@ export function createLevelSession({
     attack,
     consume,
     input,
+    automatic: autoCombat,
     onStep: reachedExit,
   });
   const camera = createCamera({

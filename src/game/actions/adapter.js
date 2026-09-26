@@ -1,6 +1,6 @@
 import { CORPSE_KIND } from "../../world/corpse.js";
 import { getWall } from "../../world/maze.js";
-import { ACTION, DIRS, resolveIntent } from "./intent.js";
+import { ACTION, DIRS, directionToAdjacent, resolveIntent } from "./intent.js";
 
 // The adapter turns a DESIRED action into the CONCRETE action to execute, judged
 // against the live world/player state right before it runs. It may:
@@ -18,6 +18,32 @@ export function createActionAdapter({
   onActionRejected,
 }) {
   function adapt(desired) {
+    if (desired?.kind === ACTION.engage) {
+      const target = findEntityById(desired.targetId);
+      if (!target || target.stats.health <= 0) return null;
+      const direction = directionToAdjacent(player, target);
+      if (direction === null) return null;
+      const { dx, dy } = DIRS[direction];
+      if (getWall(world, player.col, player.row, dx, dy) !== null) return null;
+      if (player.facing !== direction) {
+        return {
+          kind: ACTION.face,
+          dx: 0,
+          dy: 0,
+          timeCost: character.actionCosts.face,
+          facing: direction,
+        };
+      }
+      return {
+        kind: ACTION.attack,
+        dx: 0,
+        dy: 0,
+        timeCost: character.actionCosts.attack,
+        facing: null,
+        targetCell: { col: target.col, row: target.row },
+      };
+    }
+
     if (desired === ACTION.eat) {
       const cell = world.at(player.col, player.row);
       if (!character || character.stats.health >= character.statsMax.health) return null;

@@ -1,5 +1,5 @@
 import { ACTION } from "../game/actions/intent.js";
-import { actorPixelPosition } from "./actor-position.js";
+import { actorPixelPosition } from "../game/actor-position.js";
 import {
   selectMeatMonsterAttackFrame,
   selectMeatMonsterWalkFrame,

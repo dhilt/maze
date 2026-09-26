@@ -81,10 +81,29 @@ test("a direction becomes held only after the configured physical delay", () => 
 
   target.dispatch("keydown", { code: "ArrowRight", timeStamp: 1000 });
   assert.equal(input.heldAction(1119), null);
+  assert.equal(input.hasHeldControl(), true);
   assert.equal(input.heldAction(1120), "right");
 
   target.dispatch("keyup", { code: "ArrowRight" });
   assert.equal(input.heldAction(), null);
+  assert.equal(input.hasHeldControl(), false);
+  input.destroy();
+});
+
+test("opposite held keys and a held interaction still suppress automatic control", () => {
+  const target = createTarget();
+  const input = createKeyboardInput(target);
+
+  target.dispatch("keydown", { code: "ArrowLeft" });
+  target.dispatch("keydown", { code: "ArrowRight" });
+  assert.equal(input.heldDirection(), null);
+  assert.equal(input.hasHeldControl(), true);
+  target.dispatch("keyup", { code: "ArrowLeft" });
+  target.dispatch("keyup", { code: "ArrowRight" });
+  target.dispatch("keydown", { code: "KeyE" });
+  assert.equal(input.hasHeldControl(), true);
+  target.dispatch("keyup", { code: "KeyE" });
+  assert.equal(input.hasHeldControl(), false);
   input.destroy();
 });
 

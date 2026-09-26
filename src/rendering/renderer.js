@@ -5,7 +5,7 @@
 
 import { KNIGHT_ASSET_PACK } from "../assets/packs/knight.js";
 import { MEAT_MONSTER_ASSET_PACK } from "../assets/packs/meat-monster.js";
-import { actorPixelPosition } from "./actor-position.js";
+import { actorPixelPosition } from "../game/actor-position.js";
 import { createBloodEffects } from "./blood.js";
 import {
   getKnightAttackOffset,

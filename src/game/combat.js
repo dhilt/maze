@@ -1,7 +1,11 @@
 import { resolveDamage, resolveImpact } from "./actions/impact.js";
-import { ACTION } from "./actions/intent.js";
+import { actorPosition } from "./actor-position.js";
 
 const SAME_TIME_EPSILON = 1e-9;
+// Compact logical shapes in cell units, independent of transparent sprite margins.
+const BODY_HALF_SIZE = 0.25;
+const ATTACK_REACH = 0.85;
+const ATTACK_HALF_WIDTH = 0.25;
 
 function isAlive(combatant) {
   return combatant !== null && combatant.stats.health > 0;
@@ -48,22 +52,35 @@ export function createCombat({
     return null;
   }
 
-  function occupiesCell(combatant, cell) {
-    const move = combatant.move;
-    const col = combatant.position.col + (move?.kind === ACTION.step ? move.dx : 0);
-    const row = combatant.position.row + (move?.kind === ACTION.step ? move.dy : 0);
-    return col === cell.col && row === cell.row;
+  function inAttackArea(attacker, target, cell) {
+    const dx = cell.col - attacker.position.col;
+    const dy = cell.row - attacker.position.row;
+    if (Math.abs(dx) + Math.abs(dy) !== 1) return false;
+
+    const position = actorPosition(target.position, target.move);
+    const offsetX = position.x - attacker.position.col;
+    const offsetY = position.y - attacker.position.row;
+    const forward = offsetX * dx + offsetY * dy;
+    const sideways = offsetX * dy - offsetY * dx;
+    return forward >= 0 &&
+      forward <= ATTACK_REACH + BODY_HALF_SIZE &&
+      Math.abs(sideways) <= ATTACK_HALF_WIDTH + BODY_HALF_SIZE;
   }
 
   function findTarget(event, attacker) {
     if (attacker.ref.type === "player") {
       for (const monster of monsters) {
         const candidate = findCombatant({ type: "entity", id: monster.id });
-        if (isAlive(candidate) && occupiesCell(candidate, event.targetCell)) return candidate;
+        if (isAlive(candidate) && inAttackArea(attacker, candidate, event.targetCell)) {
+          return candidate;
+        }
       }
       return null;
     }
-    return findCombatant({ type: "player" });
+    const candidate = findCombatant({ type: "player" });
+    return isAlive(candidate) && inAttackArea(attacker, candidate, event.targetCell)
+      ? candidate
+      : null;
   }
 
   function queueImpact({ at = 0, attacker, targetCell, strike }) {
@@ -88,7 +105,6 @@ export function createCombat({
       if (!isAlive(attacker)) continue;
       const target = findTarget(event, attacker);
       if (!isAlive(target)) continue;
-      if (!occupiesCell(target, event.targetCell)) continue;
 
       const impact = attacker.ref.type === "player"
         ? resolveImpact({

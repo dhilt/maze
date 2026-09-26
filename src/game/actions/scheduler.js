@@ -75,7 +75,6 @@ export function createActionScheduler({
 
   function update(deltaUnits, realTimestamp) {
     const pressed = input.drainPressed();
-    if (pressed.length > 0) automatic?.onManualIntent?.();
     queueManual(pressed);
 
     let budget = deltaUnits;
@@ -93,7 +92,7 @@ export function createActionScheduler({
           }
           if (queue.length === 0) {
             if (!automatic || autoTried || input.hasHeldControl()) break;
-            const intent = automatic.nextIntent();
+            const intent = automatic.nextIntent({ frameElapsed: elapsed });
             if (intent === null || intent === undefined) break;
             queue.push(queueEntry(intent));
             autoTried = true;
@@ -127,6 +126,7 @@ export function createActionScheduler({
         const intent = automatic.nextIntent({
           afterManualFace: completed.desired,
           allowCombat: !input.hasHeldControl(),
+          frameElapsed: elapsed,
         });
         if (intent !== null && intent !== undefined) queue.push(queueEntry(intent));
         autoTried = true;

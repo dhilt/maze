@@ -1,11 +1,8 @@
 import { resolveDamage, resolveImpact } from "./actions/impact.js";
 import { actorPosition } from "./actor-position.js";
+import { inAttackArea } from "./attack-area.js";
 
 const SAME_TIME_EPSILON = 1e-9;
-// Compact logical shapes in cell units, independent of transparent sprite margins.
-const BODY_HALF_SIZE = 0.25;
-const ATTACK_REACH = 0.85;
-const ATTACK_HALF_WIDTH = 0.25;
 
 function isAlive(combatant) {
   return combatant !== null && combatant.stats.health > 0;
@@ -52,33 +49,26 @@ export function createCombat({
     return null;
   }
 
-  function inAttackArea(attacker, target, cell) {
-    const dx = cell.col - attacker.position.col;
-    const dy = cell.row - attacker.position.row;
-    if (Math.abs(dx) + Math.abs(dy) !== 1) return false;
-
-    const position = actorPosition(target.position, target.move);
-    const offsetX = position.x - attacker.position.col;
-    const offsetY = position.y - attacker.position.row;
-    const forward = offsetX * dx + offsetY * dy;
-    const sideways = offsetX * dy - offsetY * dx;
-    return forward >= 0 &&
-      forward <= ATTACK_REACH + BODY_HALF_SIZE &&
-      Math.abs(sideways) <= ATTACK_HALF_WIDTH + BODY_HALF_SIZE;
-  }
-
   function findTarget(event, attacker) {
     if (attacker.ref.type === "player") {
       for (const monster of monsters) {
         const candidate = findCombatant({ type: "entity", id: monster.id });
-        if (isAlive(candidate) && inAttackArea(attacker, candidate, event.targetCell)) {
+        if (isAlive(candidate) && inAttackArea(
+          attacker.position,
+          event.targetCell,
+          actorPosition(candidate.position, candidate.move),
+        )) {
           return candidate;
         }
       }
       return null;
     }
     const candidate = findCombatant({ type: "player" });
-    return isAlive(candidate) && inAttackArea(attacker, candidate, event.targetCell)
+    return isAlive(candidate) && inAttackArea(
+      attacker.position,
+      event.targetCell,
+      actorPosition(candidate.position, candidate.move),
+    )
       ? candidate
       : null;
   }

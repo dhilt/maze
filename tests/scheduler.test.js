@@ -249,7 +249,6 @@ test("a combat tap waits for an active attack and retreats if threatened after i
         if (afterManualFace) return adjacent ? afterManualFace : null;
         return autoCalls++ === 0 ? "attack" : null;
       },
-      onManualIntent() {},
     },
   });
 
@@ -294,19 +293,20 @@ test("a second short direction is re-evaluated after the first retreat lands", (
     const world = generateWorld({ width: 4, height: 4, seed: 1 });
     const player = { col: 1, row: 1, facing: "right" };
     const monster = { id: "m1", col: 2, row: 1, facing: "left", stats: { health: 10 } };
+    const character = { actionCosts: { face: 1, step: 5, attack: 5 } };
     const input = makeInput();
     const scheduler = createActionScheduler({
       adapter: createActionAdapter({
         world,
         player,
-        character: { actionCosts: { face: 1, step: 5, attack: 5 } },
+        character,
         findEntryBlocker: () => null,
         findEntityById: (id) => id === monster.id ? monster : null,
       }),
       movement: createMovement({ player, cellSize: 16 }),
       attack: makeExecutor(),
       input,
-      automatic: createAutomaticActions({ world, player, monsters: [monster] }),
+      automatic: createAutomaticActions({ world, player, monsters: [monster], character }),
     });
 
     input.queue("down");
@@ -344,8 +344,31 @@ test("an automatic face does not trigger the manual retreat continuation", () =>
 
   scheduler.update(1);
   assert.deepEqual(movement.log.map(({ kind }) => kind), ["face"]);
-  assert.deepEqual(choices, [undefined, undefined]);
+  assert.deepEqual(choices, [{ frameElapsed: 0 }, { frameElapsed: 1 }]);
   assert.equal(scheduler.activeId, null);
+});
+
+test("a completed manual face passes its frame offset to automatic choice", () => {
+  const input = makeInput();
+  const choices = [];
+  const scheduler = createActionScheduler({
+    adapter: makeFacingAdapter(),
+    movement: makeExecutor(),
+    attack: makeExecutor(),
+    input,
+    automatic: {
+      nextIntent(context) { choices.push(context); return null; },
+    },
+  });
+
+  input.queue("right");
+  scheduler.update(1);
+
+  assert.deepEqual(choices, [{
+    afterManualFace: "right",
+    allowCombat: true,
+    frameElapsed: 1,
+  }]);
 });
 
 test("a newer manual press during a combat turn suppresses its continuation", () => {
@@ -575,17 +598,18 @@ test("a cancelled automatic intent is adapted only once per frame", () => {
   assert.equal(scheduler.activeId, null);
 });
 
-test("an automatic side reaction turns, then starts its strike with leftover time", () => {
+test("a passive side neighbour triggers a turn, then a strike with leftover time", () => {
   const world = generateWorld({ width: 3, height: 3, seed: 1 });
   const player = { col: 1, row: 1, facing: "right" };
   const monster = { id: "side", col: 1, row: 0, stats: { health: 10 } };
-  const auto = createAutomaticActions({ world, player, monsters: [monster] });
+  const character = { actionCosts: { face: 1, attack: 5 } };
+  const auto = createAutomaticActions({ world, player, monsters: [monster], character });
   const attack = makeExecutor();
   const scheduler = createActionScheduler({
     adapter: createActionAdapter({
       world,
       player,
-      character: { actionCosts: { face: 1, attack: 5 } },
+      character,
       findEntryBlocker: () => null,
       findEntityById: (id) => id === monster.id ? monster : null,
     }),
@@ -594,8 +618,6 @@ test("an automatic side reaction turns, then starts its strike with leftover tim
     input: makeInput(),
     automatic: auto,
   });
-  auto.onAttackStart({ monsterId: monster.id });
-
   scheduler.update(1.25);
 
   assert.equal(player.facing, "up");
@@ -615,7 +637,6 @@ test("a manual press buffered during automatic attack runs before another automa
     input,
     automatic: {
       nextIntent: () => { autoCalls += 1; return "attack"; },
-      onManualIntent() {},
     },
   });
 

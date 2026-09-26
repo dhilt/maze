@@ -151,7 +151,11 @@ test("automatic engagement turns or strikes only a living adjacent target", () =
     undefined,
     (id) => id === target.id ? target : null,
   );
-  const engage = { kind: "engage", targetId: target.id };
+  const engage = {
+    kind: "engage",
+    targetId: target.id,
+    targetCell: { col: 2, row: 1 },
+  };
 
   assert.deepEqual(adapter.adapt(engage), {
     kind: "face", dx: 0, dy: 0, timeCost: COSTS.face, facing: "right",
@@ -181,8 +185,42 @@ test("automatic engagement never attacks a wall between adjacent cells", () => {
     () => target,
   );
 
-  assert.equal(adapter.adapt({ kind: "engage", targetId: target.id }), null);
+  assert.equal(adapter.adapt({
+    kind: "engage",
+    targetId: target.id,
+    targetCell: { col: 2, row: 1 },
+  }), null);
   assert.ok(adapter.adapt("attack").target, "manual wall attack still works");
+});
+
+test("an approaching target can be faced and attacked only while its chosen cell remains reserved", () => {
+  const world = generateWorld({ width: 4, height: 3, seed: 1 });
+  const player = { col: 1, row: 1, facing: "down" };
+  const target = {
+    id: "moving", col: 3, row: 1, stats: { health: 10 },
+    move: { kind: "step", dx: -1, dy: 0, elapsed: 7, timeCost: 10 },
+  };
+  const adapter = makeAdapter(
+    world, player, () => null, undefined,
+    (id) => id === target.id ? target : null,
+  );
+  const engage = {
+    kind: "engage", targetId: target.id,
+    targetCell: { col: 2, row: 1 },
+  };
+
+  assert.equal(adapter.adapt(engage).kind, "face");
+  player.facing = "right";
+  assert.deepEqual(adapter.adapt(engage).targetCell, engage.targetCell);
+
+  target.move = { kind: "step", dx: 0, dy: 1, elapsed: 0, timeCost: 10 };
+  assert.equal(adapter.adapt(engage), null, "a changed reservation cancels the queued intent");
+  target.col = 2;
+  target.move = null;
+  assert.deepEqual(adapter.adapt(engage).targetCell, engage.targetCell);
+
+  world.at(1, 1).wallRight = createWall({ health: 20, defense: 2, impactWear: 1 });
+  assert.equal(adapter.adapt(engage), null);
 });
 
 test("attack facing a stored wall resolves to a wall attack", () => {

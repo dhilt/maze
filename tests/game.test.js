@@ -340,7 +340,7 @@ test("the hero attacks a front neighbour without pressing Space", () => {
   });
 });
 
-test("a side attack starts the hero's turn and counterattack before any hit", () => {
+test("a passive side neighbour makes the hero turn and attack before any hit", () => {
   withGameEnvironment((environment) => {
     const { game, state } = createTestGame({
       speed: 1.1,
@@ -353,19 +353,15 @@ test("a side attack starts the hero's turn and counterattack before any hit", ()
     state.player.facing = "right";
     monster.col = state.player.col;
     monster.row = state.player.row - 1;
-    monster.facing = "down";
+    monster.facing = "left";
+    monster.move = { kind: "step", dx: -1, dy: 0, facing: "left", timeCost: 1000, elapsed: 0 };
 
     game.start();
     environment.runFrame();
-    assert.equal(state.player.facing, "right");
-    assert.equal(game.getState().attack, null);
-    assert.equal(monster.attack?.kind, "attack");
-    assert.equal(state.character.stats.health, 20);
-
-    environment.runFrame();
     assert.equal(state.player.facing, "up");
     assert.equal(game.getState().attack?.kind, "attack");
-    assert.equal(state.character.stats.health, 20, "the reaction precedes contact");
+    assert.equal(monster.attack, null);
+    assert.equal(state.character.stats.health, 20);
     game.stop();
   });
 });
@@ -437,7 +433,7 @@ test("a released direction tap retreats after the current automatic attack", () 
   });
 });
 
-test("a released direction tap beside a passing monster only turns", () => {
+test("a passing monster does not cause retreat, but remains an automatic target", () => {
   withGameEnvironment((environment) => {
     const { game, state } = createTestGame({
       speed: 10,
@@ -462,37 +458,10 @@ test("a released direction tap beside a passing monster only turns", () => {
     environment.runFrame();
     environment.runFrame();
 
-    assert.equal(state.player.facing, "down");
     assert.equal(state.player.row, 1, "a passing monster must not commit a retreat step");
     assert.equal(game.getState().move, null);
-    game.stop();
-  });
-});
-
-test("a short manual turn is not undone by an earlier automatic reaction", () => {
-  withGameEnvironment((environment) => {
-    const { game, state } = createTestGame({
-      speed: 1.1,
-      health: 20,
-      exitX: 0,
-      worldRows: 3,
-      monsterCount: 1,
-    });
-    const monster = state.monsters[0];
-    state.player.facing = "right";
-    monster.col = state.player.col;
-    monster.row = state.player.row - 1;
-    monster.facing = "down";
-
-    game.start();
-    environment.runFrame(); // a new monster attack records a pending reaction
-    environment.target.dispatchEvent(keyEvent("keydown", "ArrowDown"));
-    environment.target.dispatchEvent(keyEvent("keyup", "ArrowDown"));
-    environment.runFrame();
-    environment.runFrame();
-
-    assert.equal(state.player.facing, "down");
-    assert.equal(game.getState().attack, null);
+    assert.equal(state.player.facing, "right");
+    assert.equal(game.getState().attack?.kind, "attack");
     game.stop();
   });
 });

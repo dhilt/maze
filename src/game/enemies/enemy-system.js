@@ -64,7 +64,6 @@ export function createEnemySystem({
   seed,
   directionChangeChance = DIRECTION_CHANGE_CHANCE,
   onImpact,
-  onAttackStart,
 }) {
   if (
     !Number.isFinite(directionChangeChance) ||
@@ -113,15 +112,10 @@ export function createEnemySystem({
     });
   }
 
-  function startAttack(monster, resolved) {
-    monster.attack = { ...resolved, elapsed: 0, hitResolved: false };
-    onAttackStart?.({ monsterId: monster.id, targetCell: resolved.targetCell });
-  }
-
   function beginAction(monster) {
     const frontAction = adaptIntent(monster, monster.facing);
     if (frontAction?.kind === ACTION.attack) {
-      startAttack(monster, frontAction);
+      monster.attack = { ...frontAction, elapsed: 0, hitResolved: false };
       return true;
     }
 

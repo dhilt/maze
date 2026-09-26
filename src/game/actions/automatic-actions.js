@@ -1,65 +1,74 @@
 import { hasWall } from "../../world/maze.js";
+import { actorPosition } from "../actor-position.js";
+import { inAttackArea } from "../attack-area.js";
+import { ATTACK_CONTACT_PROGRESS } from "./attack-timing.js";
 import { ACTION, DIRS, directionToAdjacent } from "./intent.js";
 
 // Chooses an intent only when the scheduler has no newer player command.
-// A manual face can lead to one immediate directional intent; otherwise a fresh
-// attacker takes precedence over the passive attack on the front cell.
-export function createAutomaticActions({ world, player, monsters }) {
-  let attackerId = null;
-
-  function adjacentMonster(id) {
-    return monsters.find((monster) => (
-      monster.id === id &&
-      monster.stats.health > 0 &&
-      directionToAdjacent(player, monster) !== null
-    )) ?? null;
+// A manual face can lead to one immediate directional intent. Otherwise the
+// hero prefers current neighbours, then monsters entering neighbouring cells.
+export function createAutomaticActions({ world, player, monsters, character }) {
+  function openDirection(from, to) {
+    const direction = directionToAdjacent(from, to);
+    if (direction === null) return null;
+    const { dx, dy } = DIRS[direction];
+    return hasWall(world, from.col, from.row, dx, dy) ? null : direction;
   }
 
   function hasFacingThreat() {
-    return monsters.some((monster) => {
-      if (monster.stats.health <= 0) return false;
-      const direction = directionToAdjacent(monster, player);
-      if (direction === null || monster.facing !== direction) return false;
-      const { dx, dy } = DIRS[direction];
-      return !hasWall(world, monster.col, monster.row, dx, dy);
-    });
+    return monsters.some((monster) => (
+      monster.stats.health > 0 &&
+      openDirection(monster, player) === monster.facing
+    ));
   }
 
-  function onAttackStart({ monsterId }) {
-    const current = adjacentMonster(attackerId);
-    const incoming = adjacentMonster(monsterId);
-    if (current === null) {
-      attackerId = monsterId;
-      return;
-    }
-    const currentIsFront = directionToAdjacent(player, current) === player.facing;
-    const incomingIsSide = incoming !== null &&
-      directionToAdjacent(player, incoming) !== player.facing;
-    if (currentIsFront && incomingIsSide) attackerId = monsterId;
+  function engage(monster, targetCell) {
+    return { kind: ACTION.engage, targetId: monster.id, targetCell };
   }
 
-  function onManualIntent() {
-    attackerId = null;
-  }
-
-  function nextIntent({ afterManualFace = null, allowCombat = true } = {}) {
+  function nextIntent({
+    afterManualFace = null,
+    allowCombat = true,
+    frameElapsed = 0,
+  } = {}) {
     if (afterManualFace !== null && hasFacingThreat()) return afterManualFace;
     if (!allowCombat) return null;
 
-    const attacker = adjacentMonster(attackerId);
-    attackerId = attacker?.id ?? null;
-    if (attacker !== null) {
-      // The reaction has reached its attack phase; later threats may replace it.
-      if (player.facing === directionToAdjacent(player, attacker)) attackerId = null;
-      return { kind: ACTION.engage, targetId: attacker.id };
+    let side = null;
+    for (const monster of monsters) {
+      if (monster.stats.health <= 0) continue;
+      const direction = openDirection(player, monster);
+      if (direction === player.facing) {
+        return engage(monster, { col: monster.col, row: monster.row });
+      }
+      if (direction !== null && side === null) side = monster;
     }
+    if (side !== null) return engage(side, { col: side.col, row: side.row });
 
-    const front = monsters.find((monster) => (
-      monster.stats.health > 0 &&
-      directionToAdjacent(player, monster) === player.facing
-    ));
-    return front ? { kind: ACTION.engage, targetId: front.id } : null;
+    let approachingSide = null;
+    for (const monster of monsters) {
+      const move = monster.move;
+      if (monster.stats.health <= 0 || move?.kind !== ACTION.step) continue;
+      const targetCell = { col: monster.col + move.dx, row: monster.row + move.dy };
+      const direction = openDirection(player, targetCell);
+      if (direction === null) continue;
+
+      const lead = frameElapsed +
+        (direction === player.facing ? 0 : character.actionCosts.face) +
+        character.actionCosts.attack * ATTACK_CONTACT_PROGRESS;
+      // Enemies update after this choice; project only their committed step.
+      const projected = actorPosition(monster, {
+        ...move,
+        elapsed: Math.min(move.elapsed + lead, move.timeCost),
+      });
+      if (!inAttackArea(player, targetCell, projected)) continue;
+      if (direction === player.facing) return engage(monster, targetCell);
+      approachingSide ??= { monster, targetCell };
+    }
+    return approachingSide === null
+      ? null
+      : engage(approachingSide.monster, approachingSide.targetCell);
   }
 
-  return { onAttackStart, onManualIntent, nextIntent };
+  return { nextIntent };
 }

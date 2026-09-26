@@ -69,7 +69,7 @@ export function createLevelSession({
     seed: enemySeed,
     idPrefix: `level-${level.number}:meat-monster`,
   });
-  const automatic = createAutomaticActions({ world, player, monsters });
+  const automatic = createAutomaticActions({ world, player, monsters, character });
   const exitController = createExitController({
     cell: exitCell,
     monsterIds: monsters.map(({ id }) => id),
@@ -100,7 +100,6 @@ export function createLevelSession({
     monsters,
     seed: (enemySeed ^ 0x85ebca6b) >>> 0,
     onImpact: combat.queueImpact,
-    onAttackStart: automatic.onAttackStart,
   });
   const attack = createAttack({
     world,

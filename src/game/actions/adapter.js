@@ -21,7 +21,13 @@ export function createActionAdapter({
     if (desired?.kind === ACTION.engage) {
       const target = findEntityById(desired.targetId);
       if (!target || target.stats.health <= 0) return null;
-      const direction = directionToAdjacent(player, target);
+      const cell = desired.targetCell;
+      const occupiesCell = target.col === cell.col && target.row === cell.row;
+      const entersCell = target.move?.kind === ACTION.step &&
+        target.col + target.move.dx === cell.col &&
+        target.row + target.move.dy === cell.row;
+      if (!occupiesCell && !entersCell) return null;
+      const direction = directionToAdjacent(player, cell);
       if (direction === null) return null;
       const { dx, dy } = DIRS[direction];
       if (getWall(world, player.col, player.row, dx, dy) !== null) return null;
@@ -40,7 +46,7 @@ export function createActionAdapter({
         dy: 0,
         timeCost: character.actionCosts.attack,
         facing: null,
-        targetCell: { col: target.col, row: target.row },
+        targetCell: cell,
       };
     }
 

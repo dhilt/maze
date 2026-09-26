@@ -21,7 +21,6 @@ function createSystem({
   directionChangeChance = 0,
   playerMove = null,
   onImpact = () => {},
-  onAttackStart,
 }) {
   return createEnemySystem({
     world,
@@ -31,7 +30,6 @@ function createSystem({
     seed,
     directionChangeChance,
     onImpact,
-    onAttackStart,
   });
 }
 
@@ -390,25 +388,6 @@ test("a monster queues one hit at the shared contact peak", () => {
     targetCell: { col: 0, row: 0 },
     strike: undefined,
   });
-});
-
-test("a monster announces each attack at its start, even when no hit follows", () => {
-  const world = generateWorld({ width: 2, height: 1, seed: 1 });
-  const player = { col: 0, row: 0 };
-  const monster = createMeatMonsterFixture({ id: "m1", col: 1, row: 0, facing: "left" });
-  const starts = [];
-  const system = createSystem({
-    world,
-    player,
-    monsters: [monster],
-    onAttackStart: (event) => starts.push(event),
-  });
-
-  system.update(0.1);
-  assert.deepEqual(starts, [{ monsterId: monster.id, targetCell: { col: 0, row: 0 } }]);
-  player.col = 2; // the already-started swing misses, but was still a threat
-  system.update(monster.actionCosts.attack);
-  assert.equal(starts.length, 1);
 });
 
 test("monsters cannot cross walls or enter the hero's current or reserved cell", () => {

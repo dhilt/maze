@@ -133,12 +133,15 @@ export function createCombat({
       const total = totals.get(hit.target.key) ?? {
         target: hit.target,
         damage: 0,
-        playerHitAt: null,
+        playerHit: null,
         firstHit: hit,
       };
       total.damage += hit.damage;
       if (hit.event.attacker.type === "player" && hit.damage > 0) {
-        total.playerHitAt ??= hit.event.at;
+        total.playerHit ??= {
+          at: hit.event.at,
+          targetCell: hit.event.targetCell,
+        };
       }
       totals.set(hit.target.key, total);
       impacts.push({
@@ -150,7 +153,7 @@ export function createCombat({
     }
 
     let playerDamage = 0;
-    for (const { target, damage, playerHitAt, firstHit } of totals.values()) {
+    for (const { target, damage, playerHit, firstHit } of totals.values()) {
       const before = target.stats.health;
       target.stats.health = Math.max(0, before - damage);
       const lost = before - target.stats.health;
@@ -163,8 +166,8 @@ export function createCombat({
         });
       }
       if (target.ref.type === "player") playerDamage += lost;
-      else if (before > 0 && target.stats.health === 0 && playerHitAt !== null) {
-        playerDefeats.set(target.key, playerHitAt);
+      else if (before > 0 && target.stats.health === 0 && playerHit !== null) {
+        playerDefeats.set(target.key, playerHit);
       }
     }
     return playerDamage;
@@ -205,12 +208,13 @@ export function createCombat({
     for (const [index, monster] of monsters.entries()) {
       if (monster.stats.health > 0 || handledDeaths.has(monster.id)) continue;
       handledDeaths.add(monster.id);
-      const defeatedByPlayer = playerDefeats.has(monster);
+      const playerHit = playerDefeats.get(monster) ?? null;
       deathEvents.push({
         index,
         monster,
-        killer: defeatedByPlayer ? "player" : null,
-        at: defeatedByPlayer ? playerDefeats.get(monster) : null,
+        killer: playerHit === null ? null : "player",
+        at: playerHit?.at ?? null,
+        targetCell: playerHit?.targetCell ?? null,
       });
     }
     // Victory order matters to time-based reactions such as the exit reveal.

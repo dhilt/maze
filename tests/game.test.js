@@ -314,6 +314,37 @@ test("hero and monster contacts in the same frame resolve simultaneously", () =>
   });
 });
 
+test("a moving monster leaves its corpse in the cell hit by the hero", () => {
+  withGameEnvironment((environment) => {
+    const { game, state } = createTestGame({
+      speed: 2.5,
+      health: 20,
+      exitX: 4,
+      worldRows: 5,
+      monsterCount: 1,
+    });
+    const monster = state.monsters[0];
+    const hitCol = state.player.col + 1;
+    const row = state.player.row;
+    state.player.facing = "right";
+    state.world.at(state.player.col, row).wallRight = null;
+    monster.col = hitCol;
+    monster.row = row;
+    monster.facing = "down";
+    monster.move = { kind: "step", dx: 0, dy: 1, elapsed: 1, timeCost: 16 };
+    Object.assign(monster.stats, { health: 2, attack: 0, defense: 5 });
+
+    environment.target.dispatchEvent(keyEvent("keydown", "Space"));
+    game.start();
+    environment.runFrame();
+
+    assert.equal(monster.stats.health, 0);
+    assert.equal(state.world.at(hitCol, row).objects[0]?.entityId, monster.id);
+    assert.equal(state.world.at(hitCol, row + 1).objects.length, 0);
+    game.stop();
+  });
+});
+
 test("the hero attacks a front neighbour without pressing Space", () => {
   withGameEnvironment((environment) => {
     const { game, state } = createTestGame({

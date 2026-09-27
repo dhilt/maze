@@ -185,15 +185,20 @@ test("a preserved dead monster emits its death event only once", () => {
     character,
     monsters,
     damageRoll: MID_ROLL,
-    onMonsterDeath: ({ monster: dead, killer, at }) => {
-      deaths.push({ id: dead.id, killer, at });
+    onMonsterDeath: ({ monster: dead, killer, at, targetCell }) => {
+      deaths.push({ id: dead.id, killer, at, targetCell });
     },
   });
   combat.queueImpact(heroHit());
 
   assert.deepEqual(combat.resolve().deadMonsterIds, [monster.id]);
   assert.deepEqual(combat.resolve().deadMonsterIds, []);
-  assert.deepEqual(deaths, [{ id: monster.id, killer: "player", at: 5 }]);
+  assert.deepEqual(deaths, [{
+    id: monster.id,
+    killer: "player",
+    at: 5,
+    targetCell: { col: 1, row: 0 },
+  }]);
   assert.equal(monsters[0], monster);
 });
 

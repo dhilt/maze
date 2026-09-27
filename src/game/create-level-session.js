@@ -85,7 +85,7 @@ export function createLevelSession({
     onPlayerDamage: onStatsDirty,
     onPlayerStatChange: onStatsDirty,
     onMonsterDeath: (event) => {
-      placeCorpse(world, event.monster);
+      placeCorpse(world, event.monster, event.targetCell);
       exitController.onMonsterDeath({
         ...event,
         at: event.at === null ? null : frameStartedAt + event.at,

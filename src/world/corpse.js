@@ -9,8 +9,9 @@ function occupiedCell(entity) {
 }
 
 // Corpses are ordinary background objects: serialisable and non-blocking.
-export function placeCorpse(world, entity) {
-  const { col, row } = occupiedCell(entity);
+// A combat death supplies the hit cell; other deaths retain occupied-cell placement.
+export function placeCorpse(world, entity, targetCell = null) {
+  const { col, row } = targetCell ?? occupiedCell(entity);
   const cell = world.at(col, row);
   if (cell === null) return null;
 
